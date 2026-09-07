@@ -7,9 +7,11 @@ venv/
 *.egg-info/
 
 # Dados e modelos (não versionar dados brutos/processados nem artefatos treinados)
+# Exceção: vin_share.zip é o dataset bruto oficial, comprimido (~38MB), versionado de propósito.
 backend/data/raw/*
 backend/data/processed/*
 !backend/data/raw/.gitkeep
+!backend/data/raw/vin_share.zip
 !backend/data/processed/.gitkeep
 backend/models/*
 !backend/models/.gitkeep

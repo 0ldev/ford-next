@@ -1,7 +1,7 @@
 """Lê backend/data/raw/, gera a tabela de features por VIN e grava em backend/data/processed/."""
 import pandas as pd
 
-RAW_PATH = "data/raw/vin_share_Desafio_02.xlsx"
+RAW_PATH = "data/raw/vin_share.zip"
 
 
 def explore(df: pd.DataFrame) -> None:
@@ -44,7 +44,7 @@ def explore(df: pd.DataFrame) -> None:
 
 
 def main() -> None:
-    df = pd.read_excel(RAW_PATH, sheet_name="vin_share")
+    df = pd.read_csv(RAW_PATH, compression="zip")
     explore(df)
 
 
