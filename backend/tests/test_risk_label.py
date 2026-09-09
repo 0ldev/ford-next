@@ -10,7 +10,7 @@ from src.domain.risk_label import (
 
 
 def test_acima_do_threshold_e_em_risco() -> None:
-    gap = pd.Series([2.0])
+    gap = pd.Series([GAP_RELATIVO_THRESHOLD + 0.5])
     assert compute_em_risco(gap).iloc[0] == True  # noqa: E712
 
 
@@ -36,7 +36,9 @@ def test_threshold_e_parametrizavel() -> None:
 
 
 def test_add_em_risco_adiciona_coluna_sem_modificar_original() -> None:
-    df = pd.DataFrame({"VIN_Hash": ["a", "b", "c"], "gap_relativo": [2.0, 1.0, None]})
+    acima = GAP_RELATIVO_THRESHOLD + 0.5
+    abaixo = GAP_RELATIVO_THRESHOLD - 0.5
+    df = pd.DataFrame({"VIN_Hash": ["a", "b", "c"], "gap_relativo": [acima, abaixo, None]})
     original = df.copy()
 
     resultado = add_em_risco(df)

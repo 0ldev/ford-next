@@ -3,9 +3,24 @@ from __future__ import annotations
 
 import pandas as pd
 
-# Threshold definido pela Visão: gap_relativo acima disso marca o veículo como em
-# risco. Único lugar do código onde esse valor deve ser alterado.
-GAP_RELATIVO_THRESHOLD = 1.5
+# Threshold final: gap_relativo acima disso marca o veículo como em risco. Único
+# lugar do código onde esse valor deve ser alterado.
+#
+# Escolhido como 2.0 depois de comparar 1.2 / 1.5 / 2.0 (issue de sensibilidade de
+# threshold). AUC e precision@top-K saturam perto de 1.0 nos três — não servem de
+# critério, porque em_risco é definido a partir do próprio gap_relativo (o modelo
+# só recupera essa regra, não aprende sinal novo). O critério decisivo foi a
+# plausibilidade da distribuição (issue "validar distribuição do rótulo"):
+#   threshold=1.2 -> 90,2% da frota em risco no geral, 10/20 modelos >=90%
+#   threshold=1.5 -> 82,7% da frota em risco no geral, 9/20 modelos >=90%
+#   threshold=2.0 -> 72,3% da frota em risco no geral, 8/20 modelos >=90%
+# 2.0 é o único dos três que tira ECOSPORT (16 mil VINs) da faixa >=90% e reduz a
+# taxa geral para uma faixa mais plausível como sinal de priorização (não "quase
+# todo mundo é risco"). Os modelos que continuam >=90% em 2.0 são a KA (94,8%,
+# modelo descontinuado pela Ford no Brasil - efeito genuíno, não artefato do
+# threshold) e modelos de amostra muito pequena (<=125 VINs) que qualquer
+# threshold deixaria perto de 100%/0% por ruído estatístico, não por escolha de corte.
+GAP_RELATIVO_THRESHOLD = 2.0
 
 # Nº mínimo de serviços para o VIN ter "gap histórico próprio" (dias desde o último
 # serviço comparado ao intervalo do modelo). Abaixo disso (ex.: só 1 serviço), não há

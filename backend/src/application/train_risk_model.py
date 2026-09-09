@@ -16,7 +16,12 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
+from src.domain.risk_label import compute_em_risco
+
 TRAIN_FRACTION_PADRAO = 0.8
+
+# Thresholds de gap_relativo comparados na análise de sensibilidade do rótulo.
+THRESHOLDS_COMPARACAO_PADRAO: tuple[float, ...] = (1.2, 1.5, 2.0)
 
 # Features numéricas usadas para prever em_risco, selecionadas da tabela de features
 # das issues anteriores. gap_com_fallback é o gap relativo já com fallback por idade
@@ -178,3 +183,41 @@ def evaluate_precision_at_k(
     y_proba = modelo.predict_proba(X_teste)[:, 1]
 
     return precision_at_top_k(y_teste, y_proba, k_fraction)
+
+
+def compare_thresholds(
+    treino: pd.DataFrame,
+    teste: pd.DataFrame,
+    thresholds: tuple[float, ...] = THRESHOLDS_COMPARACAO_PADRAO,
+    gap_col: str = "gap_com_fallback",
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    target_column: str = TARGET_COLUMN,
+) -> pd.DataFrame:
+    """Sensibilidade do modelo a diferentes thresholds do rótulo de risco.
+
+    Para cada threshold em `thresholds`: recalcula `target_column` = `compute_em_risco`
+    sobre `gap_col` (mesma regra de `src.domain.risk_label`), re-treina uma
+    LogisticRegression do zero em `treino` e avalia AUC + precision@top-10%/20% em
+    `teste`. `treino`/`teste` não são modificados (o rótulo recalculado vive em cópias).
+
+    Retorna uma linha por threshold com `[threshold, pct_em_risco_treino,
+    pct_em_risco_teste, auc, precision_top10, precision_top20]`.
+    """
+    linhas = []
+
+    for threshold in thresholds:
+        treino_rotulado = treino.assign(**{target_column: compute_em_risco(treino[gap_col], threshold=threshold)})
+        teste_rotulado = teste.assign(**{target_column: compute_em_risco(teste[gap_col], threshold=threshold)})
+
+        modelo = train_logistic_regression(treino_rotulado, feature_columns, target_column)
+
+        linhas.append({
+            "threshold": threshold,
+            "pct_em_risco_treino": treino_rotulado[target_column].mean(),
+            "pct_em_risco_teste": teste_rotulado[target_column].mean(),
+            "auc": evaluate_auc(modelo, teste_rotulado, feature_columns, target_column),
+            "precision_top10": evaluate_precision_at_k(modelo, teste_rotulado, 0.10, feature_columns, target_column),
+            "precision_top20": evaluate_precision_at_k(modelo, teste_rotulado, 0.20, feature_columns, target_column),
+        })
+
+    return pd.DataFrame(linhas)

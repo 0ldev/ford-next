@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from src.application.train_risk_model import (
+    compare_thresholds,
     compute_cutoff_date,
     evaluate_auc,
     evaluate_precision_at_k,
@@ -220,3 +221,55 @@ def test_evaluate_precision_at_k_no_intervalo_valido() -> None:
 
     assert 0.0 <= precisao <= 1.0
     assert precisao > 0.9  # mesma regra deterministica de rotulo dos outros testes
+
+
+def test_compare_thresholds_retorna_uma_linha_por_threshold() -> None:
+    df = _dataset_sintetico(seed=9, n=400)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_thresholds(treino, teste)
+
+    assert resultado["threshold"].tolist() == [1.2, 1.5, 2.0]
+    assert set(resultado.columns) == {
+        "threshold", "pct_em_risco_treino", "pct_em_risco_teste",
+        "auc", "precision_top10", "precision_top20",
+    }
+
+
+def test_compare_thresholds_pct_em_risco_diminui_com_threshold_maior() -> None:
+    df = _dataset_sintetico(seed=10, n=400)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_thresholds(treino, teste).sort_values("threshold")
+
+    assert resultado["pct_em_risco_teste"].is_monotonic_decreasing
+
+
+def test_compare_thresholds_metricas_no_intervalo_valido() -> None:
+    df = _dataset_sintetico(seed=11, n=400)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_thresholds(treino, teste)
+
+    for coluna in ["auc", "precision_top10", "precision_top20", "pct_em_risco_treino", "pct_em_risco_teste"]:
+        assert resultado[coluna].between(0.0, 1.0).all()
+
+
+def test_compare_thresholds_aceita_lista_customizada() -> None:
+    df = _dataset_sintetico(seed=12, n=400)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_thresholds(treino, teste, thresholds=(1.0, 3.0))
+
+    assert resultado["threshold"].tolist() == [1.0, 3.0]
+
+
+def test_compare_thresholds_nao_modifica_treino_teste_originais() -> None:
+    df = _dataset_sintetico(seed=13, n=400)
+    treino, teste = df.iloc[:300].copy(), df.iloc[300:].copy()
+    treino_original, teste_original = treino.copy(), teste.copy()
+
+    compare_thresholds(treino, teste)
+
+    pd.testing.assert_frame_equal(treino, treino_original)
+    pd.testing.assert_frame_equal(teste, teste_original)
