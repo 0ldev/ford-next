@@ -44,7 +44,21 @@ export const CONCESSIONARIAS: ConcessionariaMock[] = [
 
 export const MODELOS = ["RANGER", "KA", "ECOSPORT", "TERRITORY", "MAVERICK"] as const;
 
-export const FAIXAS_IDADE = ["0-3", "4-7", "8+"] as const;
+/**
+ * Faixas de idade do veículo. Os `value` são os mesmos que o backend usará
+ * no parâmetro `faixaIdade`; o `label` é só apresentação.
+ */
+export interface FaixaIdadeMock {
+  value: string;
+  label: string;
+}
+
+export const FAIXAS_IDADE: FaixaIdadeMock[] = [
+  { value: "0-1", label: "0-1 anos" },
+  { value: "1-2", label: "1-2 anos" },
+  { value: "2-4", label: "2-4 anos" },
+  { value: "4+", label: "4+ anos" }
+];
 
 export const TIPOS_SERVICO = [
   "Revisão programada",
@@ -157,9 +171,10 @@ const PERIODO_PADRAO_FIM = "2026-06";
 
 /** Fatores multiplicativos por faixa de idade: carro mais velho volta menos à rede. */
 const FATOR_FAIXA_IDADE: Record<string, number> = {
-  "0-3": 1.32,
-  "4-7": 0.94,
-  "8+": 0.61
+  "0-1": 1.58,
+  "1-2": 1.29,
+  "2-4": 0.97,
+  "4+": 0.59
 };
 
 const FATOR_TIPO_SERVICO: Record<string, number> = {
