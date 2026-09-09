@@ -1,0 +1,180 @@
+/*
+ * Estilos base do dashboard.
+ *
+ * Só o mínimo para as seções e os filtros ficarem legíveis. O sistema de
+ * tokens completo (paleta, escala tipográfica, estados) é a issue #84 e
+ * deve substituir/expandir o bloco :root abaixo.
+ */
+
+:root {
+  /* Cores institucionais Ford */
+  --cor-marca: #00095b;
+  --cor-marca-clara: #066fef;
+
+  --cor-fundo: #f4f5f7;
+  --cor-superficie: #ffffff;
+  --cor-borda: #d8dce3;
+  --cor-texto: #16181d;
+  --cor-texto-suave: #5a6270;
+
+  --raio: 8px;
+  --espaco-1: 4px;
+  --espaco-2: 8px;
+  --espaco-3: 16px;
+  --espaco-4: 24px;
+  --espaco-5: 32px;
+
+  --fonte: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+}
+
+.pagina {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--espaco-4) var(--espaco-3) var(--espaco-5);
+}
+
+/* Cabeçalho ------------------------------------------------------- */
+
+.cabecalho {
+  border-bottom: 3px solid var(--cor-marca);
+  padding-bottom: var(--espaco-3);
+  margin-bottom: var(--espaco-4);
+}
+
+.cabecalho-titulo {
+  margin: 0;
+  font-size: 1.75rem;
+  color: var(--cor-marca);
+}
+
+.cabecalho-subtitulo {
+  margin: var(--espaco-2) 0 0;
+  color: var(--cor-texto-suave);
+  max-width: 70ch;
+}
+
+/* Seções ---------------------------------------------------------- */
+
+.conteudo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-4);
+}
+
+.secao {
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  padding: var(--espaco-3) var(--espaco-4) var(--espaco-4);
+}
+
+.secao-titulo {
+  margin: 0 0 var(--espaco-3);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+}
+
+.placeholder {
+  margin: 0;
+  padding: var(--espaco-4);
+  border: 1px dashed var(--cor-borda);
+  border-radius: var(--raio);
+  color: var(--cor-texto-suave);
+  text-align: center;
+}
+
+/* Filtros --------------------------------------------------------- */
+
+.filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--espaco-3);
+  align-items: end;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-1);
+  min-width: 0;
+}
+
+.campo-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cor-texto-suave);
+}
+
+.campo-controle {
+  height: 38px;
+  padding: 0 var(--espaco-2);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--cor-texto);
+}
+
+.campo-controle:focus-visible {
+  outline: 2px solid var(--cor-marca-clara);
+  outline-offset: 1px;
+}
+
+.botao-secundario {
+  height: 38px;
+  padding: 0 var(--espaco-3);
+  border: 1px solid var(--cor-marca);
+  border-radius: var(--raio);
+  background: transparent;
+  color: var(--cor-marca);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.botao-secundario:hover:not(:disabled) {
+  background: var(--cor-marca);
+  color: #fff;
+}
+
+.botao-secundario:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Bloco provisório de depuração dos filtros ----------------------- */
+
+.depuracao {
+  margin-top: var(--espaco-3);
+  font-size: 0.8125rem;
+  color: var(--cor-texto-suave);
+}
+
+.depuracao-titulo {
+  cursor: pointer;
+}
+
+.depuracao-json {
+  margin: var(--espaco-2) 0 0;
+  padding: var(--espaco-2);
+  background: var(--cor-fundo);
+  border-radius: var(--raio);
+  overflow-x: auto;
+  font-size: 0.75rem;
+}
