@@ -1,6 +1,8 @@
 import { useCallback, useState } from "react";
+import { useVinShareData } from "../application/useVinShareData";
 import type { VinShareFiltros } from "../domain/types";
 import FiltrosBar from "./FiltrosBar";
+import KpiCard, { formatarInteiro } from "./KpiCard";
 
 /** Remove chaves com valor `undefined`/"" para o estado refletir só o que está de fato filtrado. */
 function limparVazios(filtros: VinShareFiltros): VinShareFiltros {
@@ -17,12 +19,12 @@ function limparVazios(filtros: VinShareFiltros): VinShareFiltros {
  * Página principal do VIN Share Intelligence Hub.
  *
  * Dona do estado dos filtros cruzados: a barra de filtros só reporta
- * mudanças, e as seções de KPI, gráficos e leads vão consumir este mesmo
- * estado nos próximos blocos, garantindo que a tela inteira fale do mesmo
- * recorte de dados.
+ * mudanças, e as seções de KPI, gráficos e leads consomem este mesmo estado,
+ * garantindo que a tela inteira fale do mesmo recorte de dados.
  */
 export default function DashboardPage() {
   const [filtros, setFiltros] = useState<VinShareFiltros>({});
+  const { data, loading, error, recarregar } = useVinShareData(filtros);
 
   const atualizarFiltros = useCallback((alteracao: Partial<VinShareFiltros>) => {
     setFiltros((atual) => limparVazios({ ...atual, ...alteracao }));
@@ -31,6 +33,12 @@ export default function DashboardPage() {
   const limparFiltros = useCallback(() => {
     setFiltros({});
   }, []);
+
+  const contexto = data
+    ? `${formatarInteiro(data.totalComServico)} de ${formatarInteiro(
+        data.totalVeiculosElegiveis
+      )} veículos elegíveis passaram pela rede oficial`
+    : undefined;
 
   return (
     <div className="pagina">
@@ -47,24 +55,21 @@ export default function DashboardPage() {
           <h2 className="secao-titulo" id="secao-filtros">
             Filtros
           </h2>
-          <FiltrosBar
-            filtros={filtros}
-            onChange={atualizarFiltros}
-            onLimpar={limparFiltros}
-          />
-          {/* Provisório: confirma visualmente que os filtros combinam sem conflito.
-              Removido no Bloco 3, quando o KPI passar a consumir este estado. */}
-          <details className="depuracao">
-            <summary className="depuracao-titulo">Estado dos filtros (provisório)</summary>
-            <pre className="depuracao-json">{JSON.stringify(filtros, null, 2)}</pre>
-          </details>
+          <FiltrosBar filtros={filtros} onChange={atualizarFiltros} onLimpar={limparFiltros} />
         </section>
 
         <section className="secao" aria-labelledby="secao-kpi">
           <h2 className="secao-titulo" id="secao-kpi">
             Indicadores
           </h2>
-          <p className="placeholder">KPI de VIN Share estimado em breve (Bloco 3).</p>
+          <KpiCard
+            label="VIN Share estimado"
+            valor={data?.vinShareEstimado}
+            contexto={contexto}
+            loading={loading}
+            erro={error ? error.message : null}
+            onTentarNovamente={recarregar}
+          />
         </section>
 
         <section className="secao" aria-labelledby="secao-graficos">
