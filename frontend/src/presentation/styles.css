@@ -485,3 +485,229 @@ body {
 .anomalia-media .anomalia-barra-preenchida {
   background: var(--cor-severidade-media);
 }
+
+/* Acessibilidade -------------------------------------------------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Tabela de leads ------------------------------------------------- */
+
+.leads {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-3);
+}
+
+.leads-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--espaco-3);
+}
+
+.leads-controles .campo {
+  min-width: 240px;
+}
+
+.leads-contagem {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: var(--cor-texto-suave);
+}
+
+/* Tabelas largas rolam dentro do próprio container, não na página. */
+.tabela-rolagem {
+  overflow-x: auto;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.tabela th,
+.tabela td {
+  padding: 10px var(--espaco-3);
+  text-align: left;
+  border-bottom: 1px solid var(--cor-borda);
+  vertical-align: top;
+}
+
+.tabela thead th {
+  position: sticky;
+  top: 0;
+  background: var(--cor-fundo);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+  white-space: nowrap;
+}
+
+.tabela tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.linha-expandida td {
+  background: #f7f9fc;
+  border-bottom: 0;
+}
+
+.cabecalho-ordenavel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-1);
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.cabecalho-ordenavel:hover {
+  color: var(--cor-marca);
+}
+
+.seta-ordem {
+  font-size: 0.625rem;
+}
+
+.coluna-expandir {
+  width: 36px;
+}
+
+.coluna-score {
+  white-space: nowrap;
+}
+
+.botao-expandir {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 4px;
+  background: var(--cor-superficie);
+  font-size: 0.875rem;
+  line-height: 1;
+  color: var(--cor-marca);
+  cursor: pointer;
+}
+
+.botao-expandir:hover {
+  border-color: var(--cor-marca);
+}
+
+.celula-vin {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--cor-texto-suave);
+  white-space: nowrap;
+}
+
+.celula-motivo {
+  min-width: 280px;
+  color: var(--cor-texto-suave);
+}
+
+.score {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-alto {
+  background: #fbe6e4;
+  color: var(--cor-severidade-alta);
+}
+
+.score-medio {
+  background: #fdf0e0;
+  color: var(--cor-severidade-media);
+}
+
+.score-baixo {
+  background: var(--cor-fundo);
+  color: var(--cor-texto-suave);
+}
+
+/* Detalhe da linha expandida -------------------------------------- */
+
+.linha-detalhe td {
+  background: #f7f9fc;
+  padding-top: 0;
+}
+
+.detalhe {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--espaco-4);
+  padding: var(--espaco-2) 0 var(--espaco-3) 36px;
+}
+
+.detalhe-titulo {
+  margin: 0 0 var(--espaco-2);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cor-texto-suave);
+}
+
+.detalhe-texto {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.detalhe-mensagem {
+  margin: var(--espaco-2) 0 0;
+  padding: var(--espaco-3);
+  border-left: 3px solid var(--cor-marca-clara);
+  background: var(--cor-superficie);
+  border-radius: 0 var(--raio) var(--raio) 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.selo-acao {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.selo-acao-contato_ativo {
+  background: var(--cor-severidade-alta);
+  color: #fff;
+}
+
+.selo-acao-oferta {
+  background: var(--cor-severidade-media);
+  color: #fff;
+}
+
+.selo-acao-lembrete {
+  background: var(--cor-marca-clara);
+  color: #fff;
+}

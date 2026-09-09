@@ -4,6 +4,7 @@ import type { VinShareFiltros } from "../domain/types";
 import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
 import KpiCard, { formatarInteiro } from "./KpiCard";
+import LeadsTable from "./LeadsTable";
 import TrendChart from "./TrendChart";
 
 /** Remove chaves com valor `undefined`/"" para o estado refletir só o que está de fato filtrado. */
@@ -95,9 +96,7 @@ export default function DashboardPage() {
           <h2 className="secao-titulo" id="secao-leads">
             Leads priorizados
           </h2>
-          <p className="placeholder">
-            Tabela de leads com ação recomendada em breve (Bloco 5).
-          </p>
+          <LeadsTable concessionaria={filtros.concessionaria} />
         </section>
       </main>
     </div>
