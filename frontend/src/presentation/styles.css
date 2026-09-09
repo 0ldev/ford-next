@@ -158,23 +158,83 @@ body {
   cursor: not-allowed;
 }
 
-/* Bloco provisório de depuração dos filtros ----------------------- */
+/* KPI ------------------------------------------------------------- */
 
-.depuracao {
-  margin-top: var(--espaco-3);
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-1);
+  padding: var(--espaco-3) var(--espaco-4);
+  border: 1px solid var(--cor-borda);
+  border-left: 4px solid var(--cor-marca);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  /* Altura fixa para a página não pular entre loading, erro e sucesso. */
+  min-height: 132px;
+  justify-content: center;
+}
+
+.kpi-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cor-texto-suave);
+}
+
+.kpi-valor {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cor-marca);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-unidade {
+  margin-left: var(--espaco-1);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--cor-marca-clara);
+}
+
+.kpi-contexto {
+  margin: 0;
   font-size: 0.8125rem;
   color: var(--cor-texto-suave);
 }
 
-.depuracao-titulo {
-  cursor: pointer;
+.kpi-skeleton {
+  width: 180px;
+  height: 52.8px; /* mesma altura do número renderizado */
+  border-radius: var(--raio);
+  background: linear-gradient(90deg, #e9ebef 25%, #f3f4f7 50%, #e9ebef 75%);
+  background-size: 200% 100%;
+  animation: kpi-pulso 1.2s ease-in-out infinite;
 }
 
-.depuracao-json {
-  margin: var(--espaco-2) 0 0;
-  padding: var(--espaco-2);
-  background: var(--cor-fundo);
-  border-radius: var(--raio);
-  overflow-x: auto;
-  font-size: 0.75rem;
+@keyframes kpi-pulso {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-skeleton {
+    animation: none;
+  }
+}
+
+.kpi-erro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espaco-2);
+}
+
+.kpi-erro-mensagem {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #a4262c;
 }
