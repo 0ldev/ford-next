@@ -93,12 +93,12 @@ export interface AcaoRecomendada {
 export interface VinShareFiltros {
   concessionaria?: string;
   modelo?: string;
-  /** Faixa de idade do veículo em anos, ex.: "0-3", "4-7", "8+". */
+  /** Faixa de idade do veículo em anos: "0-1", "1-2", "2-4" ou "4+". */
   faixaIdade?: string;
   tipoServico?: string;
-  /** Início do período, "YYYY-MM". */
+  /** Início do período, data ISO "YYYY-MM-DD". */
   periodoInicio?: string;
-  /** Fim do período, "YYYY-MM". */
+  /** Fim do período, data ISO "YYYY-MM-DD". */
   periodoFim?: string;
 }
 
