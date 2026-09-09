@@ -99,9 +99,24 @@ const ELEGIVEIS_MODELO: Record<string, number> = {
 /* Utilitários determinísticos                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Avalanche da semente (splitmix32).
+ *
+ * O mulberry32 tem avalanche fraca no primeiro valor: sementes diferentes
+ * mas próximas devolviam quase o mesmo número, o que fazia intervalos de
+ * data distintos caírem no mesmo ajuste. Embaralhar a semente antes separa
+ * as sequências.
+ */
+function misturarSemente(valor: number): number {
+  let x = valor >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 0x21f0aaad);
+  x = Math.imul(x ^ (x >>> 15), 0x735a2d97);
+  return (x ^ (x >>> 15)) >>> 0;
+}
+
 /** PRNG mulberry32 — pequeno, determinístico e suficiente para dados fake. */
 function criarRandom(semente: number): () => number {
-  let estado = semente >>> 0;
+  let estado = misturarSemente(semente);
   return () => {
     estado = (estado + 0x6d2b79f5) >>> 0;
     let t = estado;
@@ -185,6 +200,22 @@ const FATOR_TIPO_SERVICO: Record<string, number> = {
   Funilaria: 0.52
 };
 
+/**
+ * Deslocamento do share conforme o período selecionado: de -5 a -3 ou de
+ * +3 a +5 pontos percentuais, estável para um mesmo intervalo de datas.
+ *
+ * Existe para a demo refletir mudança real ao filtrar por período — na API
+ * real esse efeito vem do próprio recorte temporal dos dados.
+ */
+function ajustePorPeriodo(inicio?: string, fim?: string): number {
+  if (!inicio && !fim) return 0;
+
+  const random = criarRandom(hashTexto(`periodo|${inicio ?? ""}|${fim ?? ""}`));
+  const magnitude = 3 + random() * 2;
+  const sinal = random() < 0.5 ? -1 : 1;
+  return sinal * magnitude;
+}
+
 export function mockVinShare(filtros: VinShareFiltros = {}): VinShareResponse {
   const modelo = filtros.modelo;
   const shareBase = modelo ? (SHARE_BASE_MODELO[modelo] ?? 33.5) : 34.7;
@@ -198,6 +229,8 @@ export function mockVinShare(filtros: VinShareFiltros = {}): VinShareResponse {
     const random = criarRandom(hashTexto(filtros.concessionaria));
     share *= 0.78 + random() * 0.44;
   }
+
+  share += ajustePorPeriodo(filtros.periodoInicio, filtros.periodoFim);
 
   const elegiveisTotais = modelo
     ? (ELEGIVEIS_MODELO[modelo] ?? 12000)
