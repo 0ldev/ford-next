@@ -5,6 +5,8 @@ import pytest
 from src.application.train_risk_model import (
     compute_cutoff_date,
     evaluate_auc,
+    evaluate_precision_at_k,
+    precision_at_top_k,
     temporal_train_test_split,
     train_decision_tree,
     train_logistic_regression,
@@ -173,3 +175,48 @@ def test_decision_tree_nao_modifica_o_dataframe_original() -> None:
     train_decision_tree(df)
 
     pd.testing.assert_frame_equal(df, original)
+
+
+def test_precision_at_top_k_com_ranking_perfeito() -> None:
+    y_true = pd.Series([1, 1, 1, 0, 0, 0, 0, 0, 0, 0])
+    y_score = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0])
+
+    assert precision_at_top_k(y_true, y_score, k_fraction=0.1) == 1.0  # top 1: so positivos
+    assert precision_at_top_k(y_true, y_score, k_fraction=0.3) == 1.0  # top 3: os 3 positivos
+
+
+def test_precision_at_top_k_com_ranking_misto() -> None:
+    y_true = pd.Series([1, 0, 1, 0, 1, 0, 0, 0, 0, 0])
+    y_score = np.array([0.9, 0.85, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1])
+
+    # top 40% (k=4): indices 0,1,2,3 -> y_true [1,0,1,0] -> 2 de 4
+    assert precision_at_top_k(y_true, y_score, k_fraction=0.4) == pytest.approx(0.5)
+
+
+def test_precision_at_top_k_arredonda_k_para_cima() -> None:
+    y_true = pd.Series([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    y_score = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0])
+
+    # 5% de 10 = 0.5 -> ceil = 1 linha (nao 0)
+    assert precision_at_top_k(y_true, y_score, k_fraction=0.05) == 1.0
+
+
+def test_precision_at_top_k_fracao_invalida_gera_erro() -> None:
+    y_true = pd.Series([1, 0])
+    y_score = np.array([0.9, 0.1])
+
+    with pytest.raises(ValueError):
+        precision_at_top_k(y_true, y_score, k_fraction=0.0)
+    with pytest.raises(ValueError):
+        precision_at_top_k(y_true, y_score, k_fraction=1.5)
+
+
+def test_evaluate_precision_at_k_no_intervalo_valido() -> None:
+    df = _dataset_sintetico(seed=8, n=400)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    modelo = train_logistic_regression(treino)
+    precisao = evaluate_precision_at_k(modelo, teste, k_fraction=0.2)
+
+    assert 0.0 <= precisao <= 1.0
+    assert precisao > 0.9  # mesma regra deterministica de rotulo dos outros testes

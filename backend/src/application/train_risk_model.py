@@ -6,6 +6,9 @@ tinham acontecido.
 """
 from __future__ import annotations
 
+import math
+
+import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
@@ -135,3 +138,43 @@ def evaluate_auc(
     y_proba = modelo.predict_proba(X_teste)[:, 1]
 
     return roc_auc_score(y_teste, y_proba)
+
+
+def precision_at_top_k(y_true: pd.Series, y_score: np.ndarray, k_fraction: float) -> float:
+    """Precision@top-K: entre os `k_fraction` (ex.: 10%) com maior `y_score`, qual fração
+    realmente tem `y_true`=1.
+
+    `k` é `ceil(n * k_fraction)`, com mínimo de 1 linha. Em empate de score, a ordem de
+    desempate segue a ordem original (estável) — não afeta a métrica agregada.
+    """
+    if not 0 < k_fraction <= 1:
+        raise ValueError("k_fraction deve estar entre 0 (exclusive) e 1 (inclusive)")
+
+    y_true_array = np.asarray(y_true)
+    y_score_array = np.asarray(y_score)
+
+    n = len(y_true_array)
+    k = max(1, math.ceil(n * k_fraction))
+
+    top_k_idx = np.argsort(-y_score_array, kind="stable")[:k]
+
+    return float(y_true_array[top_k_idx].mean())
+
+
+def evaluate_precision_at_k(
+    modelo: RiskClassifier,
+    teste: pd.DataFrame,
+    k_fraction: float,
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    target_column: str = TARGET_COLUMN,
+) -> float:
+    """Precision@top-`k_fraction` do `modelo` no conjunto de teste.
+
+    Ranqueia `teste` pelo score do modelo (`predict_proba`) e mede a precisão nos
+    `k_fraction` de maior score — ex.: `k_fraction=0.1` responde "dos 10% de veículos
+    com maior score, quantos realmente estão marcados `em_risco`?".
+    """
+    X_teste, y_teste = _feature_matrix_e_alvo(teste, feature_columns, target_column)
+    y_proba = modelo.predict_proba(X_teste)[:, 1]
+
+    return precision_at_top_k(y_teste, y_proba, k_fraction)

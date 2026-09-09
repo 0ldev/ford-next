@@ -10,6 +10,7 @@ from src.application.build_vehicle_features import (
 from src.application.train_risk_model import (
     FEATURE_COLUMNS,
     evaluate_auc,
+    evaluate_precision_at_k,
     temporal_train_test_split,
     train_decision_tree,
     train_logistic_regression,
@@ -96,6 +97,13 @@ def main() -> None:
 
     print(f"AUC LogisticRegression (baseline): {auc_logistico:.4f}")
     print(f"AUC DecisionTree (max_depth={modelo_arvore.get_depth()}):     {auc_arvore:.4f}")
+
+    # Validação temporal do modelo escolhido (LogisticRegression) no conjunto de
+    # teste — período posterior à data de corte.
+    precisao_top10 = evaluate_precision_at_k(modelo_logistico, teste, k_fraction=0.10)
+    precisao_top20 = evaluate_precision_at_k(modelo_logistico, teste, k_fraction=0.20)
+    print(f"Precision@top-10% (LogisticRegression): {precisao_top10:.4f}")
+    print(f"Precision@top-20% (LogisticRegression): {precisao_top20:.4f}")
 
     # Modelo escolhido: LogisticRegression (ver justificativa na issue de comparação).
     X_teste = teste[list(FEATURE_COLUMNS)].dropna()
