@@ -221,3 +221,49 @@ def compare_thresholds(
         })
 
     return pd.DataFrame(linhas)
+
+
+def filter_by_model(df: pd.DataFrame, model_name: str, model_col: str = "ModelName") -> pd.DataFrame:
+    """Filtra `df` para as linhas de um único `model_name`. `df` não é modificado."""
+    return df[df[model_col] == model_name].copy()
+
+
+def compare_model_specific_vs_geral(
+    treino: pd.DataFrame,
+    teste: pd.DataFrame,
+    model_name: str,
+    model_col: str = "ModelName",
+    feature_columns: tuple[str, ...] = FEATURE_COLUMNS,
+    target_column: str = TARGET_COLUMN,
+) -> pd.DataFrame:
+    """Compara um modelo específico de `model_name` com o modelo geral (todos os modelos).
+
+    Treina duas `LogisticRegression`: uma em `treino` inteiro ("geral") e outra só nas
+    linhas de `model_name` em `treino` ("específico"). As duas são avaliadas na
+    **mesma** fatia de teste — só as linhas de `model_name` em `teste` — para a
+    comparação ser justa (o modelo geral não ganha nem perde por ser medido em
+    veículos de outros modelos). `treino`/`teste` não são modificados.
+
+    Retorna uma linha por variante (`geral`, `especifico`), colunas
+    `[variante, n_treino, n_teste_avaliado, auc]`.
+    """
+    treino_modelo = filter_by_model(treino, model_name, model_col)
+    teste_modelo = filter_by_model(teste, model_name, model_col)
+
+    modelo_geral = train_logistic_regression(treino, feature_columns, target_column)
+    modelo_especifico = train_logistic_regression(treino_modelo, feature_columns, target_column)
+
+    return pd.DataFrame([
+        {
+            "variante": "geral",
+            "n_treino": len(treino),
+            "n_teste_avaliado": len(teste_modelo),
+            "auc": evaluate_auc(modelo_geral, teste_modelo, feature_columns, target_column),
+        },
+        {
+            "variante": "especifico",
+            "n_treino": len(treino_modelo),
+            "n_teste_avaliado": len(teste_modelo),
+            "auc": evaluate_auc(modelo_especifico, teste_modelo, feature_columns, target_column),
+        },
+    ])

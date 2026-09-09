@@ -94,3 +94,24 @@ def compute_gap_com_fallback(
         resultado = resultado.fillna(gap_fallback_geral)
 
     return resultado.rename("gap_com_fallback")
+
+
+def apply_low_volume_heuristic(
+    df: pd.DataFrame,
+    gap_col: str = "gap_com_fallback",
+    threshold: float = GAP_RELATIVO_THRESHOLD,
+    output_col: str = "em_risco",
+) -> pd.DataFrame:
+    """Heurística de risco para modelos de veículo com poucos dados: `em_risco = gap > threshold`,
+    sem treinar um modelo de ML.
+
+    Para modelos de baixo volume (ex.: os que não são RANGER/KA — ver issues de
+    segmentação por modelo), não há VINs suficientes para treinar/validar um
+    classificador com confiança. Isso não é uma perda de qualidade: as issues de
+    RANGER e KA mostraram que um modelo de ML dedicado dá a **mesma AUC** da
+    heurística pura, porque `em_risco` já É essa regra (`gap > threshold`) — treinar
+    um modelo só recupera a regra que já temos. Reaproveita `add_em_risco` (mesma
+    função usada em toda a base) em vez de duplicar a lógica do threshold; `df` não
+    é modificado.
+    """
+    return add_em_risco(df, gap_relativo_col=gap_col, threshold=threshold, output_col=output_col)

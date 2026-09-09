@@ -4,6 +4,7 @@ import pytest
 from src.domain.risk_label import (
     GAP_RELATIVO_THRESHOLD,
     add_em_risco,
+    apply_low_volume_heuristic,
     compute_em_risco,
     compute_gap_com_fallback,
 )
@@ -99,3 +100,31 @@ def test_gap_com_fallback_alimenta_em_risco_sem_nulos_quando_completo() -> None:
     gap = compute_gap_com_fallback(**entrada, intervalo_mediano_geral=200.0)
     em_risco = compute_em_risco(gap)
     assert em_risco.isna().sum() == 0
+
+
+def test_apply_low_volume_heuristic_e_equivalente_a_add_em_risco() -> None:
+    acima = GAP_RELATIVO_THRESHOLD + 0.5
+    abaixo = GAP_RELATIVO_THRESHOLD - 0.5
+    df = pd.DataFrame({
+        "ModelName": ["7BC", "F-SERIES", "KFA"],
+        "gap_com_fallback": [acima, abaixo, None],
+    })
+
+    resultado = apply_low_volume_heuristic(df)
+
+    assert resultado["em_risco"].tolist() == [True, False, pd.NA]
+
+
+def test_apply_low_volume_heuristic_respeita_threshold_customizado() -> None:
+    df = pd.DataFrame({"gap_com_fallback": [1.2]})
+    resultado = apply_low_volume_heuristic(df, threshold=1.0)
+    assert resultado["em_risco"].iloc[0] == True  # noqa: E712
+
+
+def test_apply_low_volume_heuristic_nao_modifica_original() -> None:
+    df = pd.DataFrame({"gap_com_fallback": [1.0, 3.0, None]})
+    original = df.copy()
+
+    apply_low_volume_heuristic(df)
+
+    pd.testing.assert_frame_equal(df, original)

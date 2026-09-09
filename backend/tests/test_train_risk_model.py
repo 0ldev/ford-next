@@ -3,10 +3,12 @@ import pandas as pd
 import pytest
 
 from src.application.train_risk_model import (
+    compare_model_specific_vs_geral,
     compare_thresholds,
     compute_cutoff_date,
     evaluate_auc,
     evaluate_precision_at_k,
+    filter_by_model,
     precision_at_top_k,
     temporal_train_test_split,
     train_decision_tree,
@@ -270,6 +272,85 @@ def test_compare_thresholds_nao_modifica_treino_teste_originais() -> None:
     treino_original, teste_original = treino.copy(), teste.copy()
 
     compare_thresholds(treino, teste)
+
+    pd.testing.assert_frame_equal(treino, treino_original)
+    pd.testing.assert_frame_equal(teste, teste_original)
+
+
+def _dataset_sintetico_com_modelo(n: int = 400, seed: int = 0) -> pd.DataFrame:
+    rng = np.random.default_rng(seed)
+    gap_com_fallback = rng.uniform(0, 5, n)
+    return pd.DataFrame({
+        "ModelName": rng.choice(["RANGER", "OUTROS"], size=n, p=[0.7, 0.3]),
+        "idade_dias": rng.uniform(30, 3000, n),
+        "gap_com_fallback": gap_com_fallback,
+        "n_servicos": rng.integers(1, 20, n),
+        "em_risco": gap_com_fallback > 1.5,
+    })
+
+
+def test_filter_by_model_mantem_so_o_modelo_pedido() -> None:
+    df = _dataset_sintetico_com_modelo(seed=20)
+    filtrado = filter_by_model(df, "RANGER")
+
+    assert (filtrado["ModelName"] == "RANGER").all()
+    assert len(filtrado) < len(df)
+
+
+def test_filter_by_model_nao_modifica_original() -> None:
+    df = _dataset_sintetico_com_modelo(seed=21)
+    original = df.copy()
+
+    filter_by_model(df, "RANGER")
+
+    pd.testing.assert_frame_equal(df, original)
+
+
+def test_compare_model_specific_vs_geral_retorna_as_duas_variantes() -> None:
+    df = _dataset_sintetico_com_modelo(seed=22)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_model_specific_vs_geral(treino, teste, model_name="RANGER")
+
+    assert set(resultado["variante"]) == {"geral", "especifico"}
+    assert set(resultado.columns) == {"variante", "n_treino", "n_teste_avaliado", "auc"}
+
+
+def test_compare_model_specific_vs_geral_avalia_as_duas_na_mesma_fatia_de_teste() -> None:
+    df = _dataset_sintetico_com_modelo(seed=23)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_model_specific_vs_geral(treino, teste, model_name="RANGER")
+
+    n_teste_ranger = len(filter_by_model(teste, "RANGER"))
+    assert (resultado["n_teste_avaliado"] == n_teste_ranger).all()
+
+
+def test_compare_model_specific_vs_geral_n_treino_especifico_e_menor() -> None:
+    df = _dataset_sintetico_com_modelo(seed=24)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_model_specific_vs_geral(treino, teste, model_name="RANGER").set_index("variante")
+
+    assert resultado.loc["especifico", "n_treino"] < resultado.loc["geral", "n_treino"]
+    assert resultado.loc["geral", "n_treino"] == len(treino)
+
+
+def test_compare_model_specific_vs_geral_aucs_no_intervalo_valido() -> None:
+    df = _dataset_sintetico_com_modelo(seed=25)
+    treino, teste = df.iloc[:300], df.iloc[300:]
+
+    resultado = compare_model_specific_vs_geral(treino, teste, model_name="RANGER")
+
+    assert resultado["auc"].between(0.0, 1.0).all()
+
+
+def test_compare_model_specific_vs_geral_nao_modifica_treino_teste() -> None:
+    df = _dataset_sintetico_com_modelo(seed=26)
+    treino, teste = df.iloc[:300].copy(), df.iloc[300:].copy()
+    treino_original, teste_original = treino.copy(), teste.copy()
+
+    compare_model_specific_vs_geral(treino, teste, model_name="RANGER")
 
     pd.testing.assert_frame_equal(treino, treino_original)
     pd.testing.assert_frame_equal(teste, teste_original)
