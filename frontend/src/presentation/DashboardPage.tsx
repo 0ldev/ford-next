@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { useVinShareData } from "../application/useVinShareData";
 import type { VinShareFiltros } from "../domain/types";
+import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
 import KpiCard, { formatarInteiro } from "./KpiCard";
+import TrendChart from "./TrendChart";
 
 /** Remove chaves com valor `undefined`/"" para o estado refletir só o que está de fato filtrado. */
 function limparVazios(filtros: VinShareFiltros): VinShareFiltros {
@@ -72,13 +74,21 @@ export default function DashboardPage() {
           />
         </section>
 
-        <section className="secao" aria-labelledby="secao-graficos">
-          <h2 className="secao-titulo" id="secao-graficos">
-            Tendência e anomalias
+        <section className="secao" aria-labelledby="secao-tendencia">
+          <h2 className="secao-titulo" id="secao-tendencia">
+            Tendência de VIN Share
           </h2>
-          <p className="placeholder">
-            Gráfico de tendência temporal e painel de anomalias em breve (Bloco 4).
-          </p>
+          <TrendChart
+            periodoInicio={filtros.periodoInicio}
+            periodoFim={filtros.periodoFim}
+          />
+        </section>
+
+        <section className="secao" aria-labelledby="secao-anomalias">
+          <h2 className="secao-titulo" id="secao-anomalias">
+            Anomalias detectadas
+          </h2>
+          <AnomaliasPanel />
         </section>
 
         <section className="secao" aria-labelledby="secao-leads">
