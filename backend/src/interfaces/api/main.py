@@ -13,9 +13,20 @@ async def lifespan(app: FastAPI):
     # Aquece os caches de repositorio/calculo no startup, nao na primeira requisicao —
     # sem isso o primeiro GET pagaria o custo de ler os arquivos processados (o de
     # vin-share tem ~600 mil linhas) ou, no caso de /api/anomalies, ~3-4s de deteccao.
-    load_vin_share_data()
-    load_leads_data()
-    _anomalias_calculadas()
+    #
+    # Cada aquecimento e' isolado (try/except por dataset): se UM estiver faltando, so
+    # aquele endpoint fica indisponivel no primeiro GET (erro que os routers ja tratam
+    # por requisicao) — nao derruba a API inteira na inicializacao, que e' exatamente o
+    # que esse tratamento por requisicao foi desenhado para tolerar.
+    for nome, carregar in (
+        ("vin-share", load_vin_share_data),
+        ("leads", load_leads_data),
+        ("anomalies", _anomalias_calculadas),
+    ):
+        try:
+            carregar()
+        except FileNotFoundError as erro:
+            print(f"[startup] aviso: nao foi possivel pre-carregar '{nome}': {erro}")
     yield
 
 

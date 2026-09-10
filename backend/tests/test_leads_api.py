@@ -32,7 +32,7 @@ def _features_teste() -> pd.DataFrame:
 @pytest.fixture(autouse=True)
 def _dados_de_teste(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(leads_router, "load_leads_data", lambda: _leads_teste())
-    monkeypatch.setattr(leads_router, "load_features", lambda: _features_teste())
+    monkeypatch.setattr(leads_router, "load_vehicle_features", lambda: _features_teste())
 
 
 def test_leads_sem_filtro_retorna_todos_ordenados_por_score_desc() -> None:
@@ -140,7 +140,7 @@ def test_acao_recomendada_score_baixo_e_lembrete() -> None:
 def test_acao_recomendada_vin_sem_features_usa_dias_zero_sem_quebrar(monkeypatch: pytest.MonkeyPatch) -> None:
     # VIN presente em leads.csv mas ausente de vehicle_features.parquet (nao deveria
     # acontecer nos dados reais, mas o endpoint nao pode quebrar se acontecer).
-    monkeypatch.setattr(leads_router, "load_features", lambda: _features_teste().iloc[0:0])
+    monkeypatch.setattr(leads_router, "load_vehicle_features", lambda: _features_teste().iloc[0:0])
 
     resposta = client.get("/api/leads/v1/acao")
     assert resposta.status_code == 200

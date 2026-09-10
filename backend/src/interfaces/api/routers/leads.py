@@ -51,7 +51,7 @@ from pydantic import BaseModel
 from src.domain.action_rules import Acao, recomendar_acao
 from src.domain.message_templates import montar_mensagem
 from src.infrastructure.leads_repository import load_leads_data
-from src.interfaces.pipeline.build_features import load_features
+from src.infrastructure.vehicle_features_repository import load_vehicle_features
 
 router = APIRouter()
 
@@ -96,7 +96,7 @@ def get_acao_recomendada(vin: str) -> AcaoRecomendada:
     score = float(linha["score"].iloc[0])
     modelo = str(linha["modelo"].iloc[0])
 
-    features = load_features()
+    features = load_vehicle_features()
     linha_features = features.loc[features["VIN_Hash"] == vin]
     dias_sem_servico = (
         float(linha_features["dias_desde_ultimo_servico"].iloc[0]) if not linha_features.empty else 0.0
