@@ -1,0 +1,109 @@
+/*
+ * Tokens de design do VIN Share Intelligence Hub.
+ *
+ * Fonte única de cores, espaçamentos e tipografia. Nenhum componente deve
+ * escrever um hex, um px de espaçamento ou um tamanho de fonte solto: se
+ * falta um valor aqui, o certo é acrescentá-lo a esta escala.
+ *
+ * A paleta inteira parte do azul institucional Ford (#00095b). Os neutros
+ * têm um leve viés azulado (matiz ~222°) para pertencerem à mesma família,
+ * em vez de cinzas puros que destoariam da marca.
+ */
+
+:root {
+  /* --- Marca ---------------------------------------------------- */
+  --azul-900: #000733; /* títulos e números de destaque */
+  --azul-800: #00095b; /* azul institucional Ford */
+  --azul-600: #1d3f9e; /* estados de hover */
+  --azul-500: #066fef; /* acento, foco, links */
+  --azul-100: #e7eefc; /* fundos de realce */
+
+  /* --- Neutros -------------------------------------------------- */
+  --neutro-900: #151a29; /* corpo de texto */
+  --neutro-600: #58607a; /* texto secundário, rótulos */
+  --neutro-400: #9aa2b8; /* traços fracos */
+  --neutro-300: #d5dae6; /* bordas */
+  --neutro-200: #e6eaf3; /* trilhos, divisores fortes */
+  --neutro-100: #eef1f8; /* fundo de realce sutil */
+  --neutro-50: #f4f6fb; /* fundo da página */
+  --branco: #ffffff;
+
+  /* --- Severidade e risco --------------------------------------- */
+  --risco-alto: #b3261e;
+  --risco-alto-fundo: #fbeae8;
+  --risco-medio: #a35a00;
+  --risco-medio-fundo: #fcf0e2;
+  --risco-baixo: var(--neutro-600);
+  --risco-baixo-fundo: var(--neutro-100);
+
+  /* --- Papéis semânticos ---------------------------------------- */
+  --cor-fundo: var(--neutro-50);
+  --cor-superficie: var(--branco);
+  --cor-superficie-sutil: var(--neutro-50);
+  --cor-borda: var(--neutro-300);
+  --cor-texto: var(--neutro-900);
+  --cor-texto-suave: var(--neutro-600);
+  --cor-marca: var(--azul-800);
+  --cor-marca-clara: var(--azul-500);
+  --cor-erro: var(--risco-alto);
+
+  /* --- Espaçamento (escala de 4px) ------------------------------ */
+  --espaco-1: 4px;
+  --espaco-2: 8px;
+  --espaco-3: 12px;
+  --espaco-4: 16px;
+  --espaco-5: 24px;
+  --espaco-6: 32px;
+  --espaco-7: 48px;
+
+  /* --- Tipografia ------------------------------------------------ */
+  --fonte: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --fonte-mono: "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  --texto-2xs: 0.6875rem; /* selos e etiquetas */
+  --texto-xs: 0.75rem; /* rótulos de campo, títulos de seção */
+  --texto-sm: 0.8125rem; /* texto denso: tabela, descrições */
+  --texto-md: 0.9375rem; /* corpo */
+  --texto-lg: 1.0625rem; /* títulos de grupo */
+  --texto-xl: 1.75rem; /* título da página */
+  /* O KPI acompanha a largura da tela: legível no notebook, imponente no projetor. */
+  --texto-kpi: clamp(3rem, 3.4vw, 4.25rem);
+
+  --peso-medio: 600;
+  --peso-forte: 700;
+  --altura-linha: 1.5;
+  --entreletras-etiqueta: 0.07em;
+
+  /* --- Formas e elevação ---------------------------------------- */
+  --raio-sm: 6px;
+  --raio-md: 10px;
+  --raio-pilula: 999px;
+  --sombra-card: 0 1px 2px rgba(0, 9, 91, 0.04), 0 1px 3px rgba(0, 9, 91, 0.06);
+  --borda-foco: 2px solid var(--azul-500);
+
+  /* --- Métricas de layout --------------------------------------- */
+  --largura-max: 1440px;
+  --altura-controle: 38px;
+  --altura-grafico: 320px;
+}
+
+/*
+ * Projetor. A partir de 1600px o conteúdo ganha largura e a base tipográfica
+ * sobe, então tudo que é medido em rem cresce junto e a tela lida a
+ * distância continua proporcional.
+ */
+@media (min-width: 1600px) {
+  :root {
+    font-size: 17px;
+    --largura-max: 1680px;
+    --altura-controle: 42px;
+    --altura-grafico: 400px;
+  }
+}
+
+@media (min-width: 1900px) {
+  :root {
+    font-size: 18px;
+    --altura-grafico: 440px;
+  }
+}
