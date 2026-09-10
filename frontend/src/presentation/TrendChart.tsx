@@ -20,7 +20,13 @@ export interface TrendChartProps {
   periodoFim?: string;
 }
 
-const CORES_SERIE = ["#00095b", "#d9531e", "#0b8a63", "#7b3fb3", "#066fef", "#b8860b"];
+/*
+ * Paleta das séries. O SVG do Recharts recebe cor por prop, então estes
+ * valores não podem vir de custom properties; a primeira é o azul da marca
+ * (--azul-800) e as demais foram escolhidas para se distinguirem dela e
+ * entre si. Grade, eixos e legenda, esses sim, são estilizados por CSS.
+ */
+const CORES_SERIE = ["#00095b", "#c2410c", "#0b7a5a", "#6d28d9", "#0284c7", "#a16207"];
 
 /**
  * Cor fixa por modelo, ancorada na posição dele em MODELOS.
@@ -128,41 +134,36 @@ export default function TrendChart({ periodoInicio, periodoFim }: TrendChartProp
           <p className="placeholder-texto">Nenhum dado de tendência para este recorte.</p>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={linhas} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e4e7ec" />
-            <XAxis
-              dataKey="data"
-              tickFormatter={formatarCompetencia}
-              tick={{ fontSize: 12 }}
-              stroke="#5a6270"
-            />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              stroke="#5a6270"
-              width={56}
-              tickFormatter={(valor: number) => `${valor}%`}
-              domain={[0, "auto"]}
-            />
-            <Tooltip
-              formatter={(valor: number) => `${valor}%`}
-              labelFormatter={formatarCompetencia}
-            />
-            <Legend />
-            {series.map((modelo, indice) => (
-              <Line
-                key={modelo}
-                type="monotone"
-                dataKey={modelo}
-                name={modelo}
-                stroke={corDoModelo(modelo, indice)}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
+        <div className="grafico-area">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={linhas} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="data" tickFormatter={formatarCompetencia} />
+              <YAxis
+                width={56}
+                tickFormatter={(valor: number) => `${valor}%`}
+                domain={[0, "auto"]}
               />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
+              <Tooltip
+                formatter={(valor: number) => `${valor}%`}
+                labelFormatter={formatarCompetencia}
+              />
+              <Legend />
+              {series.map((modelo, indice) => (
+                <Line
+                  key={modelo}
+                  type="monotone"
+                  dataKey={modelo}
+                  name={modelo}
+                  stroke={corDoModelo(modelo, indice)}
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
     </div>
   );

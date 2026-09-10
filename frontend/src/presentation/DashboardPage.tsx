@@ -65,14 +65,16 @@ export default function DashboardPage() {
           <h2 className="secao-titulo" id="secao-kpi">
             Indicadores
           </h2>
-          <KpiCard
-            label="VIN Share estimado"
-            valor={data?.vinShareEstimado}
-            contexto={contexto}
-            loading={loading}
-            erro={error ? error.message : null}
-            onTentarNovamente={recarregar}
-          />
+          <div className="indicadores">
+            <KpiCard
+              label="VIN Share estimado"
+              valor={data?.vinShareEstimado}
+              contexto={contexto}
+              loading={loading}
+              erro={error ? error.message : null}
+              onTentarNovamente={recarregar}
+            />
+          </div>
         </section>
 
         <section className="secao" aria-labelledby="secao-tendencia">
