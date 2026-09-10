@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import { useTrendData } from "../application/useTrendData";
 import type { TrendResponse } from "../domain/types";
-import { MODELOS } from "../infrastructure/mockData";
 import EstadoErro from "./EstadoErro";
 import SeletorModelos from "./SeletorModelos";
 
@@ -19,6 +18,8 @@ export interface TrendChartProps {
   /** Recorte de período herdado dos filtros da página. */
   periodoInicio?: string;
   periodoFim?: string;
+  /** Catálogo real de modelos (via `useCatalogo`), não uma lista fixa no frontend. */
+  modelos: string[];
 }
 
 /*
@@ -30,13 +31,13 @@ export interface TrendChartProps {
 const CORES_SERIE = ["#00095b", "#c2410c", "#0b7a5a", "#6d28d9", "#0284c7", "#a16207"];
 
 /**
- * Cor fixa por modelo, ancorada na posição dele em MODELOS.
+ * Cor fixa por modelo, ancorada na posição dele no catálogo (`modelos`).
  *
  * Se a cor viesse da ordem das séries desenhadas, desmarcar um modelo
  * recoloriria os outros e a comparação entre duas seleções ficaria enganosa.
  */
-function corDoModelo(modelo: string, posicaoNaSerie: number): string {
-  const indice = MODELOS.indexOf(modelo as (typeof MODELOS)[number]);
+function corDoModelo(modelo: string, posicaoNaSerie: number, modelos: string[]): string {
+  const indice = modelos.indexOf(modelo);
   return CORES_SERIE[(indice >= 0 ? indice : posicaoNaSerie) % CORES_SERIE.length];
 }
 
@@ -93,7 +94,7 @@ export function formatarCompetencia(competencia: string): string {
  * superior é de seleção única e serve aos indicadores, enquanto aqui o
  * objetivo é justamente comparar modelos entre si.
  */
-export default function TrendChart({ periodoInicio, periodoFim }: TrendChartProps) {
+export default function TrendChart({ periodoInicio, periodoFim, modelos }: TrendChartProps) {
   const [modelosSelecionados, setModelosSelecionados] = useState<string[]>([]);
 
   const { data, loading, error, recarregar } = useTrendData({
@@ -114,7 +115,7 @@ export default function TrendChart({ periodoInicio, periodoFim }: TrendChartProp
   return (
     <div className="grafico">
       <SeletorModelos
-        opcoes={MODELOS}
+        opcoes={modelos}
         selecionados={modelosSelecionados}
         onChange={setModelosSelecionados}
       />
@@ -153,7 +154,7 @@ export default function TrendChart({ periodoInicio, periodoFim }: TrendChartProp
                   type="monotone"
                   dataKey={modelo}
                   name={modelo}
-                  stroke={corDoModelo(modelo, indice)}
+                  stroke={corDoModelo(modelo, indice, modelos)}
                   strokeWidth={2}
                   dot={false}
                   activeDot={{ r: 4 }}

@@ -1,11 +1,6 @@
-import { useId } from "react";
-import type { VinShareFiltros } from "../domain/types";
-import {
-  CONCESSIONARIAS,
-  FAIXAS_IDADE,
-  MODELOS,
-  TIPOS_SERVICO
-} from "../infrastructure/mockData";
+import { useId, useMemo } from "react";
+import type { Catalogo, VinShareFiltros } from "../domain/types";
+import { FAIXAS_IDADE, rotuloDaConcessionaria } from "../infrastructure/mockData";
 import Dropdown, { type DropdownOption } from "./Dropdown";
 
 export interface FiltrosBarProps {
@@ -13,30 +8,16 @@ export interface FiltrosBarProps {
   /** Recebe apenas os campos alterados; a página faz o merge no estado. */
   onChange: (alteracao: Partial<VinShareFiltros>) => void;
   onLimpar: () => void;
+  /**
+   * Catálogo real (via `useCatalogo`), não uma lista fixa no frontend — assim
+   * os dropdowns nunca divergem do que a API realmente tem.
+   */
+  catalogo: Catalogo | null;
 }
-
-/**
- * Opções derivadas da própria fonte de dados, para não existir uma segunda
- * lista de concessionárias/modelos divergindo do que a API devolve.
- */
-const OPCOES_CONCESSIONARIA: DropdownOption[] = CONCESSIONARIAS.map((item) => ({
-  value: item.dealerCode,
-  label: `${item.dealerCode} — ${item.nome}`
-}));
-
-const OPCOES_MODELO: DropdownOption[] = MODELOS.map((modelo) => ({
-  value: modelo,
-  label: modelo
-}));
 
 const OPCOES_FAIXA_IDADE: DropdownOption[] = FAIXAS_IDADE.map((faixa) => ({
   value: faixa.value,
   label: faixa.label
-}));
-
-const OPCOES_TIPO_SERVICO: DropdownOption[] = TIPOS_SERVICO.map((tipo) => ({
-  value: tipo,
-  label: tipo
 }));
 
 /** Converte "" (campo de data limpo pelo usuário) em `undefined`. */
@@ -50,7 +31,7 @@ function normalizarData(valor: string): string | undefined {
  * Todos os filtros são combináveis e escrevem no mesmo estado centralizado
  * em `DashboardPage`; nenhum deles guarda estado próprio.
  */
-export default function FiltrosBar({ filtros, onChange, onLimpar }: FiltrosBarProps) {
+export default function FiltrosBar({ filtros, onChange, onLimpar, catalogo }: FiltrosBarProps) {
   const idInicio = useId();
   const idFim = useId();
 
@@ -58,12 +39,33 @@ export default function FiltrosBar({ filtros, onChange, onLimpar }: FiltrosBarPr
     (valor) => valor !== undefined && valor !== ""
   );
 
+  const opcoesConcessionaria: DropdownOption[] = useMemo(
+    () =>
+      (catalogo?.concessionarias ?? []).map((dealerCode) => {
+        const nome = rotuloDaConcessionaria(dealerCode);
+        // Sem nome real (API real, dataset não tem cadastro de nomes de
+        // concessionária): mostra só o código, em vez de "100 — 100".
+        return { value: dealerCode, label: nome === dealerCode ? dealerCode : `${dealerCode} — ${nome}` };
+      }),
+    [catalogo]
+  );
+
+  const opcoesModelo: DropdownOption[] = useMemo(
+    () => (catalogo?.modelos ?? []).map((modelo) => ({ value: modelo, label: modelo })),
+    [catalogo]
+  );
+
+  const opcoesTipoServico: DropdownOption[] = useMemo(
+    () => (catalogo?.tiposServico ?? []).map((tipo) => ({ value: tipo, label: tipo })),
+    [catalogo]
+  );
+
   return (
     <div className="filtros">
       <div className="filtros-campos">
         <Dropdown
           label="Concessionária"
-          options={OPCOES_CONCESSIONARIA}
+          options={opcoesConcessionaria}
           value={filtros.concessionaria}
           onChange={(concessionaria) => onChange({ concessionaria })}
           placeholder="Todas"
@@ -71,7 +73,7 @@ export default function FiltrosBar({ filtros, onChange, onLimpar }: FiltrosBarPr
 
         <Dropdown
           label="Modelo"
-          options={OPCOES_MODELO}
+          options={opcoesModelo}
           value={filtros.modelo}
           onChange={(modelo) => onChange({ modelo })}
         />
@@ -86,7 +88,7 @@ export default function FiltrosBar({ filtros, onChange, onLimpar }: FiltrosBarPr
 
         <Dropdown
           label="Tipo de serviço"
-          options={OPCOES_TIPO_SERVICO}
+          options={opcoesTipoServico}
           value={filtros.tipoServico}
           onChange={(tipoServico) => onChange({ tipoServico })}
         />

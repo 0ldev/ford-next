@@ -16,6 +16,7 @@ import type {
   AcaoTipo,
   AnomaliesResponse,
   Anomaly,
+  Catalogo,
   Lead,
   LeadsFiltros,
   LeadsResponse,
@@ -43,6 +44,19 @@ export const CONCESSIONARIAS: ConcessionariaMock[] = [
 ];
 
 export const MODELOS = ["RANGER", "KA", "ECOSPORT", "TERRITORY", "MAVERICK"] as const;
+
+/**
+ * Nome de exibição de uma concessionária a partir do `dealerCode`.
+ *
+ * Único ponto de resolução do nome (antes duplicado em `LeadsTable.tsx` e
+ * `ResumoFiltros.tsx`) — usado tanto no modo mock (nomes fictícios de
+ * `CONCESSIONARIAS`) quanto com a API real: como o dataset real só tem o
+ * código numérico, sem nome de concessionária, o fallback (`?? dealerCode`)
+ * é o que aparece de fato fora do modo mock — comportamento esperado, não bug.
+ */
+export function rotuloDaConcessionaria(dealerCode: string): string {
+  return CONCESSIONARIAS.find((item) => item.dealerCode === dealerCode)?.nome ?? dealerCode;
+}
 
 /**
  * Faixas de idade do veículo. Os `value` são os mesmos que o backend usará
@@ -438,4 +452,12 @@ export function mockAcaoRecomendada(vin: string): AcaoRecomendada {
   };
 
   return { acao, mensagem: mensagens[acao] };
+}
+
+export function mockCatalogo(): Catalogo {
+  return {
+    modelos: [...MODELOS],
+    concessionarias: CONCESSIONARIAS.map((item) => item.dealerCode),
+    tiposServico: [...TIPOS_SERVICO]
+  };
 }

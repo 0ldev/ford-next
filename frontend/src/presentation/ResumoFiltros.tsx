@@ -1,5 +1,5 @@
 import type { VinShareFiltros } from "../domain/types";
-import { CONCESSIONARIAS, FAIXAS_IDADE } from "../infrastructure/mockData";
+import { FAIXAS_IDADE, rotuloDaConcessionaria } from "../infrastructure/mockData";
 
 export interface ResumoFiltrosProps {
   filtros: VinShareFiltros;
@@ -14,10 +14,6 @@ export interface ResumoFiltrosProps {
 export function formatarDataBR(iso: string): string {
   const [ano, mes, dia] = iso.split("-");
   return ano && mes && dia ? `${dia}/${mes}/${ano}` : iso;
-}
-
-function rotuloDaConcessionaria(dealerCode: string): string {
-  return CONCESSIONARIAS.find((item) => item.dealerCode === dealerCode)?.nome ?? dealerCode;
 }
 
 function rotuloDaFaixa(valor: string): string {

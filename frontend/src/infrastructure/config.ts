@@ -5,12 +5,11 @@
 /**
  * Alterna entre a fonte de dados mockada e a API real.
  *
- * Enquanto os endpoints do backend não estiverem no ar, o dashboard roda
- * inteiro sobre `mockData.ts`, que respeita os mesmos tipos de `domain/types`.
- *
- * TODO: trocar para false quando a API do Bruno estiver no ar.
+ * A API do Bruno está no ar e integrada (issue #8) — `mockData.ts` continua
+ * existindo para desenvolvimento offline/demonstração sem backend, mas o
+ * dashboard real usa a API.
  */
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 /**
  * Prefixo dos endpoints. Em desenvolvimento o Vite faz proxy de `/api`

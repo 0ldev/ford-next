@@ -10,6 +10,7 @@
 import type {
   AcaoRecomendada,
   AnomaliesResponse,
+  Catalogo,
   LeadsFiltros,
   LeadsResponse,
   TrendFiltros,
@@ -22,6 +23,7 @@ import { MOCK_LATENCY_MS, USE_MOCK } from "./config";
 import {
   mockAcaoRecomendada,
   mockAnomalies,
+  mockCatalogo,
   mockLeads,
   mockTrend,
   mockVinShare
@@ -57,4 +59,9 @@ export function buscarLeads(filtros: LeadsFiltros = {}): Promise<LeadsResponse> 
 export function buscarAcaoRecomendada(vin: string): Promise<AcaoRecomendada> {
   if (USE_MOCK) return comLatencia(mockAcaoRecomendada(vin));
   return apiGet<AcaoRecomendada>(`/leads/${encodeURIComponent(vin)}/acao`);
+}
+
+export function buscarCatalogo(): Promise<Catalogo> {
+  if (USE_MOCK) return comLatencia(mockCatalogo());
+  return apiGet<Catalogo>("/catalogo");
 }

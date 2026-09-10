@@ -83,6 +83,17 @@ export interface AcaoRecomendada {
 }
 
 /* ------------------------------------------------------------------ */
+/* GET /api/catalogo                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Valores reais distintos do dataset — opções verdadeiras dos filtros do dashboard. */
+export interface Catalogo {
+  modelos: string[];
+  concessionarias: string[];
+  tiposServico: string[];
+}
+
+/* ------------------------------------------------------------------ */
 /* Filtros                                                             */
 /* ------------------------------------------------------------------ */
 

@@ -3,7 +3,7 @@ import { useAcoesRecomendadas } from "../application/useAcoesRecomendadas";
 import { useLeads } from "../application/useLeads";
 import { LIMIAR_ALTO, LIMIAR_MEDIO, nivelDeRisco } from "../domain/severidade";
 import type { Lead } from "../domain/types";
-import { CONCESSIONARIAS } from "../infrastructure/mockData";
+import { rotuloDaConcessionaria } from "../infrastructure/mockData";
 import AcaoPrioritaria from "./AcaoPrioritaria";
 import BotaoCopiar from "./BotaoCopiar";
 import Dropdown, { type DropdownOption } from "./Dropdown";
@@ -27,11 +27,6 @@ const OPCOES_FAIXA: DropdownOption[] = [
   { value: "medio", label: `Risco médio ou maior (≥ ${Math.round(LIMIAR_MEDIO * 100)}%)` },
   { value: "alto", label: `Risco alto (≥ ${Math.round(LIMIAR_ALTO * 100)}%)` }
 ];
-
-/** Nome legível da concessionária; cai no código quando não conhecemos o nome. */
-function nomeDaConcessionaria(dealerCode: string): string {
-  return CONCESSIONARIAS.find((item) => item.dealerCode === dealerCode)?.nome ?? dealerCode;
-}
 
 function formatarScore(score: number): string {
   return `${Math.round(score * 100)}%`;
@@ -118,7 +113,7 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
       <AcaoPrioritaria
         lead={leadPrioritario}
         concessionaria={
-          leadPrioritario ? nomeDaConcessionaria(leadPrioritario.dealerCode) : ""
+          leadPrioritario ? rotuloDaConcessionaria(leadPrioritario.dealerCode) : ""
         }
         acao={leadPrioritario ? acoes[leadPrioritario.vin] : undefined}
         onCarregar={carregar}
@@ -223,7 +218,7 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
         <td className="celula-vin" title={lead.vin}>
           {encurtarVin(lead.vin)}
         </td>
-        <td>{nomeDaConcessionaria(lead.dealerCode)}</td>
+        <td>{rotuloDaConcessionaria(lead.dealerCode)}</td>
         <td>{lead.modelo}</td>
         <td className="coluna-score">
           <span className={`score score-${nivel}`}>{formatarScore(lead.score)}</span>

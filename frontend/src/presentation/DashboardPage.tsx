@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useCatalogo } from "../application/useCatalogo";
 import { useVinShareData } from "../application/useVinShareData";
 import type { VinShareFiltros } from "../domain/types";
 import AnomaliasPanel from "./AnomaliasPanel";
@@ -29,6 +30,7 @@ function limparVazios(filtros: VinShareFiltros): VinShareFiltros {
 export default function DashboardPage() {
   const [filtros, setFiltros] = useState<VinShareFiltros>({});
   const { data, loading, error, recarregar } = useVinShareData(filtros);
+  const { data: catalogo } = useCatalogo();
 
   /*
    * Recorte da rede inteira, buscado uma vez só (a chave do hook é constante,
@@ -85,7 +87,12 @@ export default function DashboardPage() {
           <h2 className="secao-titulo" id="secao-filtros">
             Filtros
           </h2>
-          <FiltrosBar filtros={filtros} onChange={atualizarFiltros} onLimpar={limparFiltros} />
+          <FiltrosBar
+            filtros={filtros}
+            onChange={atualizarFiltros}
+            onLimpar={limparFiltros}
+            catalogo={catalogo}
+          />
           <ResumoFiltros filtros={filtros} />
         </section>
 
@@ -113,6 +120,7 @@ export default function DashboardPage() {
           <TrendChart
             periodoInicio={filtros.periodoInicio}
             periodoFim={filtros.periodoFim}
+            modelos={catalogo?.modelos ?? []}
           />
         </section>
 
