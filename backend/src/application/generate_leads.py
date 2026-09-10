@@ -29,19 +29,24 @@ def compute_score_risco(
     `risk_label.apply_low_volume_heuristic` (mesma regra de threshold do rótulo
     `em_risco`, sem ML — não há VINs suficientes para validar um classificador com
     confiança para eles) convertida para 0.0/1.0, mantendo `output_col` na mesma
-    escala [0, 1] nos dois casos.
+    escala [0, 1] nos dois casos. Seguro para `df` sem nenhuma linha em um dos dois
+    segmentos (ex.: subconjunto filtrado por concessionária) — não chama
+    `predict_proba`/`apply_low_volume_heuristic` em uma seleção vazia.
 
     `df` não é modificado.
     """
     result = df.copy()
     tem_volume_para_ml = result[model_col].isin(modelos_com_ml)
 
-    result.loc[tem_volume_para_ml, output_col] = modelo.predict_proba(
-        result.loc[tem_volume_para_ml, list(feature_columns)]
-    )[:, 1]
+    if tem_volume_para_ml.any():
+        result.loc[tem_volume_para_ml, output_col] = modelo.predict_proba(
+            result.loc[tem_volume_para_ml, list(feature_columns)]
+        )[:, 1]
 
-    heuristica = apply_low_volume_heuristic(result.loc[~tem_volume_para_ml])
-    result.loc[~tem_volume_para_ml, output_col] = heuristica["em_risco"].astype(float)
+    sem_volume_para_ml = ~tem_volume_para_ml
+    if sem_volume_para_ml.any():
+        heuristica = apply_low_volume_heuristic(result.loc[sem_volume_para_ml])
+        result.loc[sem_volume_para_ml, output_col] = heuristica["em_risco"].astype(float)
 
     return result
 

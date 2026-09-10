@@ -3,7 +3,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.application.generate_leads import add_risk_explanation, compute_score_risco, rank_by_dealer
+from src.application.generate_leads import (
+    MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML,
+    add_risk_explanation,
+    compute_score_risco,
+    rank_by_dealer,
+)
 from src.application.train_risk_model import FEATURE_COLUMNS
 from src.infrastructure.model_repository import load_model
 from src.interfaces.pipeline.build_features import load_features
@@ -33,11 +38,21 @@ def build_leads_table() -> pd.DataFrame:
     nenhuma lógica de negócio nova aqui, só orquestração. `compute_score_risco` segmenta
     o score por modelo de veículo: RANGER/KA usam o modelo de ML, os demais usam a
     heurística de threshold (ver `application.generate_leads.MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML`).
+
+    Cada segmento exige só as colunas que o seu método de score realmente usa: RANGER/KA
+    (ML) precisa das `FEATURE_COLUMNS` completas, os demais modelos (heurística) só de
+    `gap_com_fallback`. Um VIN fora de RANGER/KA com `idade_dias` nulo (ex.: sem
+    `SalesDate`/`DeliveryDate`) mas `gap_com_fallback` válido continua pontuável — não é
+    descartado por faltar uma coluna que a heurística nem usa.
     """
     tabela = load_features()
     modelo = load_model()
 
-    leads = tabela.dropna(subset=list(FEATURE_COLUMNS)).copy()
+    tem_volume_para_ml = tabela["ModelName"].isin(MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML)
+    segmento_ml = tabela.loc[tem_volume_para_ml].dropna(subset=list(FEATURE_COLUMNS))
+    segmento_heuristica = tabela.loc[~tem_volume_para_ml].dropna(subset=["gap_com_fallback"])
+    leads = pd.concat([segmento_ml, segmento_heuristica], ignore_index=True)
+
     leads = compute_score_risco(leads, modelo, FEATURE_COLUMNS)
     # gap_com_fallback, nao gap_relativo: e a coluna que realmente alimenta o score
     # (FEATURE_COLUMNS) e a heuristica de baixo volume, inclusive para os VINs de

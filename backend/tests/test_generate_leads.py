@@ -55,6 +55,28 @@ def test_compute_score_risco_nao_modifica_o_dataframe_original() -> None:
     pd.testing.assert_frame_equal(df, original)
 
 
+def test_compute_score_risco_nao_quebra_com_segmento_ml_vazio() -> None:
+    """Sem nenhum VIN de RANGER/KA no lote (ex.: filtro por concessionária/modelo),
+    nao pode chamar predict_proba com um DataFrame vazio (StandardScaler rejeita)."""
+    tabela = _tabela_segmentacao()
+    so_heuristica = tabela[~tabela["ModelName"].isin(("RANGER", "KA"))].copy()
+
+    resultado = compute_score_risco(so_heuristica, _ModeloFixo(), FEATURE_COLUMNS).set_index("VIN_Hash")
+
+    assert resultado.loc["v3", "score_risco"] == 1.0
+    assert resultado.loc["v4", "score_risco"] == 0.0
+
+
+def test_compute_score_risco_nao_quebra_com_segmento_heuristica_vazio() -> None:
+    tabela = _tabela_segmentacao()
+    so_ml = tabela[tabela["ModelName"].isin(("RANGER", "KA"))].copy()
+
+    resultado = compute_score_risco(so_ml, _ModeloFixo(), FEATURE_COLUMNS).set_index("VIN_Hash")
+
+    assert resultado.loc["v1", "score_risco"] == pytest.approx(0.99)
+    assert resultado.loc["v2", "score_risco"] == pytest.approx(0.99)
+
+
 def _leads_df() -> pd.DataFrame:
     return pd.DataFrame({
         "VIN_Hash": ["v1", "v2", "v3", "v4", "v5", "v6"],
