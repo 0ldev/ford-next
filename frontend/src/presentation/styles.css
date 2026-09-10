@@ -168,6 +168,9 @@ body {
 }
 
 .botao-link {
+  /* Hospeda um .sr-only no atalho da anomalia; sem isto o rótulo se ancora
+     no documento e volta a esticar a página. */
+  position: relative;
   border: 0;
   background: none;
   padding: 0;
@@ -926,4 +929,76 @@ body {
 
 .acao-prioritaria .detalhe-mensagem {
   margin-top: var(--espaco-2);
+}
+
+/* Régua do KPI contra a rede -------------------------------------------- */
+
+.kpi-comparacao {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-1);
+  margin: 0;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+}
+
+.kpi-comparacao-abaixo {
+  color: var(--risco-alto);
+}
+
+.kpi-comparacao-acima {
+  color: var(--verde-positivo);
+}
+
+/* Atalho da anomalia para o filtro --------------------------------------- */
+
+.anomalia-atalho {
+  margin-top: var(--espaco-3);
+}
+
+.destaque-anomalia-acao {
+  align-self: flex-start;
+  margin-top: var(--espaco-2);
+  border-color: var(--risco-alto);
+  color: var(--risco-alto);
+}
+
+.destaque-anomalia-acao:hover:not(:disabled) {
+  background: var(--risco-alto);
+  color: var(--branco);
+}
+
+/* Copiar mensagem -------------------------------------------------------- */
+
+.botao-copiar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--espaco-2);
+  align-self: flex-start;
+  margin-top: var(--espaco-2);
+  height: var(--altura-controle);
+  padding: 0 var(--espaco-4);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-sm);
+  background: var(--cor-superficie);
+  font: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--cor-marca);
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.botao-copiar:hover {
+  border-color: var(--cor-marca);
+}
+
+.botao-copiar[data-estado="copiado"] {
+  border-color: var(--verde-positivo);
+  color: var(--verde-positivo);
+}
+
+.botao-copiar[data-estado="falhou"] {
+  border-color: var(--risco-medio);
+  color: var(--risco-medio);
 }

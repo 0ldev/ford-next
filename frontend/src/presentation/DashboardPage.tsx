@@ -3,7 +3,7 @@ import { useVinShareData } from "../application/useVinShareData";
 import type { VinShareFiltros } from "../domain/types";
 import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
-import KpiCard, { formatarInteiro } from "./KpiCard";
+import KpiCard, { formatarInteiro, type ComparacaoKpi } from "./KpiCard";
 import LeadsTable from "./LeadsTable";
 import ResumoFiltros from "./ResumoFiltros";
 import TrendChart from "./TrendChart";
@@ -30,6 +30,13 @@ export default function DashboardPage() {
   const [filtros, setFiltros] = useState<VinShareFiltros>({});
   const { data, loading, error, recarregar } = useVinShareData(filtros);
 
+  /*
+   * Recorte da rede inteira, buscado uma vez só (a chave do hook é constante,
+   * então não refaz a requisição a cada filtro). Serve de régua: sem ela,
+   * "30,7% nesta concessionária" não diz se está bem ou mal.
+   */
+  const { data: referencia } = useVinShareData({});
+
   const atualizarFiltros = useCallback((alteracao: Partial<VinShareFiltros>) => {
     setFiltros((atual) => limparVazios({ ...atual, ...alteracao }));
   }, []);
@@ -37,6 +44,25 @@ export default function DashboardPage() {
   const limparFiltros = useCallback(() => {
     setFiltros({});
   }, []);
+
+  /*
+   * Atalho vindo do painel de anomalias: aplica o recorte e sobe a página,
+   * para quem está assistindo ver o dashboard inteiro reagir ao alerta.
+   */
+  const filtrarPelaAnomalia = useCallback((filtro: Partial<VinShareFiltros>) => {
+    setFiltros((atual) => limparVazios({ ...atual, ...filtro }));
+
+    const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: suave ? "smooth" : "auto" });
+  }, []);
+
+  const temFiltroAtivo = Object.keys(filtros).length > 0;
+
+  /* A régua só aparece quando há recorte: comparar a rede com ela mesma seria ruído. */
+  const comparacao: ComparacaoKpi | undefined =
+    temFiltroAtivo && referencia
+      ? { base: referencia.vinShareEstimado, rotuloBase: "média da rede" }
+      : undefined;
 
   const contexto = data
     ? `${formatarInteiro(data.totalComServico)} de ${formatarInteiro(
@@ -72,6 +98,7 @@ export default function DashboardPage() {
               label="VIN Share estimado"
               valor={data?.vinShareEstimado}
               contexto={contexto}
+              comparacao={comparacao}
               loading={loading}
               erro={error ? error.message : null}
               onTentarNovamente={recarregar}
@@ -93,7 +120,7 @@ export default function DashboardPage() {
           <h2 className="secao-titulo" id="secao-anomalias">
             Anomalias detectadas
           </h2>
-          <AnomaliasPanel />
+          <AnomaliasPanel onFiltrar={filtrarPelaAnomalia} />
         </section>
 
         <section className="secao" aria-labelledby="secao-leads">

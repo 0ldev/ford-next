@@ -5,6 +5,7 @@ import { LIMIAR_ALTO, LIMIAR_MEDIO, nivelDeRisco } from "../domain/severidade";
 import type { Lead } from "../domain/types";
 import { CONCESSIONARIAS } from "../infrastructure/mockData";
 import AcaoPrioritaria from "./AcaoPrioritaria";
+import BotaoCopiar from "./BotaoCopiar";
 import Dropdown, { type DropdownOption } from "./Dropdown";
 import EstadoErro from "./EstadoErro";
 import { ROTULO_ACAO } from "./rotulos";
@@ -260,6 +261,7 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
                       {ROTULO_ACAO[acao.data.acao]}
                     </span>
                     <p className="detalhe-mensagem">{acao.data.mensagem}</p>
+                    <BotaoCopiar texto={acao.data.mensagem} />
                   </>
                 ) : null}
               </div>
