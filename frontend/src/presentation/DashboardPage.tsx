@@ -5,6 +5,7 @@ import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
 import KpiCard, { formatarInteiro } from "./KpiCard";
 import LeadsTable from "./LeadsTable";
+import ResumoFiltros from "./ResumoFiltros";
 import TrendChart from "./TrendChart";
 
 /** Remove chaves com valor `undefined`/"" para o estado refletir só o que está de fato filtrado. */
@@ -59,6 +60,7 @@ export default function DashboardPage() {
             Filtros
           </h2>
           <FiltrosBar filtros={filtros} onChange={atualizarFiltros} onLimpar={limparFiltros} />
+          <ResumoFiltros filtros={filtros} />
         </section>
 
         <section className="secao" aria-labelledby="secao-kpi">

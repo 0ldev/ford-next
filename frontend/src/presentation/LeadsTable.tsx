@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import { useAcoesRecomendadas } from "../application/useAcoesRecomendadas";
 import { useLeads } from "../application/useLeads";
 import { LIMIAR_ALTO, LIMIAR_MEDIO, nivelDeRisco } from "../domain/severidade";
-import type { AcaoTipo, Lead } from "../domain/types";
+import type { Lead } from "../domain/types";
 import { CONCESSIONARIAS } from "../infrastructure/mockData";
+import AcaoPrioritaria from "./AcaoPrioritaria";
 import Dropdown, { type DropdownOption } from "./Dropdown";
 import EstadoErro from "./EstadoErro";
+import { ROTULO_ACAO } from "./rotulos";
 
 export interface LeadsTableProps {
   /** dealerCode vindo da barra de filtros; ausente traz a fila da rede toda. */
@@ -24,12 +26,6 @@ const OPCOES_FAIXA: DropdownOption[] = [
   { value: "medio", label: `Risco médio ou maior (≥ ${Math.round(LIMIAR_MEDIO * 100)}%)` },
   { value: "alto", label: `Risco alto (≥ ${Math.round(LIMIAR_ALTO * 100)}%)` }
 ];
-
-const ROTULO_ACAO: Record<AcaoTipo, string> = {
-  contato_ativo: "Contato ativo",
-  oferta: "Oferta dirigida",
-  lembrete: "Lembrete automático"
-};
 
 /** Nome legível da concessionária; cai no código quando não conhecemos o nome. */
 function nomeDaConcessionaria(dealerCode: string): string {
@@ -78,6 +74,20 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
       .sort((a, b) => (ordem === "desc" ? b.score - a.score : a.score - b.score));
   }, [data, faixa, ordem]);
 
+  /*
+   * O card de destaque mostra sempre o caso mais urgente do recorte, então
+   * olha o maior score e não o primeiro da lista — inverter a ordenação da
+   * tabela não deve trocar qual é a ação prioritária.
+   */
+  const leadPrioritario = useMemo(
+    () =>
+      leads.reduce<Lead | undefined>(
+        (maior, lead) => (!maior || lead.score > maior.score ? lead : maior),
+        undefined
+      ),
+    [leads]
+  );
+
   const alternarLinha = (vin: string) => {
     setExpandidos((atual) =>
       atual.includes(vin) ? atual.filter((item) => item !== vin) : [...atual, vin]
@@ -104,6 +114,16 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
 
   return (
     <div className="leads">
+      <AcaoPrioritaria
+        lead={leadPrioritario}
+        concessionaria={
+          leadPrioritario ? nomeDaConcessionaria(leadPrioritario.dealerCode) : ""
+        }
+        acao={leadPrioritario ? acoes[leadPrioritario.vin] : undefined}
+        onCarregar={carregar}
+        onTentarNovamente={recarregarAcao}
+      />
+
       <div className="leads-controles">
         <Dropdown
           label="Faixa de risco"
