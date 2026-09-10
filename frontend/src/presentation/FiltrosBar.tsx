@@ -60,68 +60,71 @@ export default function FiltrosBar({ filtros, onChange, onLimpar }: FiltrosBarPr
 
   return (
     <div className="filtros">
-      <Dropdown
-        label="Concessionária"
-        options={OPCOES_CONCESSIONARIA}
-        value={filtros.concessionaria}
-        onChange={(concessionaria) => onChange({ concessionaria })}
-        placeholder="Todas"
-      />
-
-      <Dropdown
-        label="Modelo"
-        options={OPCOES_MODELO}
-        value={filtros.modelo}
-        onChange={(modelo) => onChange({ modelo })}
-      />
-
-      <Dropdown
-        label="Idade do veículo"
-        options={OPCOES_FAIXA_IDADE}
-        value={filtros.faixaIdade}
-        onChange={(faixaIdade) => onChange({ faixaIdade })}
-        placeholder="Todas as idades"
-      />
-
-      <Dropdown
-        label="Tipo de serviço"
-        options={OPCOES_TIPO_SERVICO}
-        value={filtros.tipoServico}
-        onChange={(tipoServico) => onChange({ tipoServico })}
-      />
-
-      <div className="campo">
-        <label className="campo-label" htmlFor={idInicio}>
-          Período — início
-        </label>
-        <input
-          id={idInicio}
-          className="campo-controle"
-          type="date"
-          value={filtros.periodoInicio ?? ""}
-          // Impede montar um intervalo invertido pela própria UI do navegador.
-          max={filtros.periodoFim}
-          onChange={(evento) =>
-            onChange({ periodoInicio: normalizarData(evento.target.value) })
-          }
+      <div className="filtros-campos">
+        <Dropdown
+          label="Concessionária"
+          options={OPCOES_CONCESSIONARIA}
+          value={filtros.concessionaria}
+          onChange={(concessionaria) => onChange({ concessionaria })}
+          placeholder="Todas"
         />
+
+        <Dropdown
+          label="Modelo"
+          options={OPCOES_MODELO}
+          value={filtros.modelo}
+          onChange={(modelo) => onChange({ modelo })}
+        />
+
+        <Dropdown
+          label="Idade do veículo"
+          options={OPCOES_FAIXA_IDADE}
+          value={filtros.faixaIdade}
+          onChange={(faixaIdade) => onChange({ faixaIdade })}
+          placeholder="Todas as idades"
+        />
+
+        <Dropdown
+          label="Tipo de serviço"
+          options={OPCOES_TIPO_SERVICO}
+          value={filtros.tipoServico}
+          onChange={(tipoServico) => onChange({ tipoServico })}
+        />
+
+        <div className="campo">
+          <label className="campo-label" htmlFor={idInicio}>
+            Período — início
+          </label>
+          <input
+            id={idInicio}
+            className="campo-controle"
+            type="date"
+            value={filtros.periodoInicio ?? ""}
+            // Impede montar um intervalo invertido pela própria UI do navegador.
+            max={filtros.periodoFim}
+            onChange={(evento) =>
+              onChange({ periodoInicio: normalizarData(evento.target.value) })
+            }
+          />
+        </div>
+
+        <div className="campo">
+          <label className="campo-label" htmlFor={idFim}>
+            Período — fim
+          </label>
+          <input
+            id={idFim}
+            className="campo-controle"
+            type="date"
+            value={filtros.periodoFim ?? ""}
+            min={filtros.periodoInicio}
+            onChange={(evento) => onChange({ periodoFim: normalizarData(evento.target.value) })}
+          />
+        </div>
+
       </div>
 
-      <div className="campo">
-        <label className="campo-label" htmlFor={idFim}>
-          Período — fim
-        </label>
-        <input
-          id={idFim}
-          className="campo-controle"
-          type="date"
-          value={filtros.periodoFim ?? ""}
-          min={filtros.periodoInicio}
-          onChange={(evento) => onChange({ periodoFim: normalizarData(evento.target.value) })}
-        />
-      </div>
-
-      <div className="campo campo-acao">
+      <div className="filtros-acoes">
         <button
           type="button"
           className="botao-secundario"
