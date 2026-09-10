@@ -534,6 +534,8 @@ body {
  * página em vez de grudar.
  */
 .tabela-rolagem {
+  /* Rede de segurança: prende qualquer filho absoluto ao container. */
+  position: relative;
   overflow: auto;
   max-height: var(--altura-max-tabela);
   border: 1px solid var(--cor-borda);
@@ -618,6 +620,13 @@ body {
 }
 
 .botao-expandir {
+  /*
+   * Contexto de posicionamento para o rótulo .sr-only que vive dentro dele.
+   * Sem isso o rótulo se posiciona contra o documento, escapa do container
+   * rolável da tabela e estica a página — eram ~1.750px de rolagem vazia
+   * com 50 leads na fila.
+   */
+  position: relative;
   width: var(--tamanho-botao-expandir);
   height: var(--tamanho-botao-expandir);
   border: 1px solid var(--cor-borda);
@@ -738,6 +747,13 @@ body {
 
 /* Acessibilidade -------------------------------------------------------- */
 
+/*
+ * Visualmente escondido, mas legível por leitor de tela.
+ *
+ * Exige que o elemento host tenha `position` diferente de `static`: sendo
+ * absoluto, sem isso ele se ancora no documento inteiro e passa a contar
+ * para a altura rolável da página.
+ */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -787,3 +803,4 @@ body {
   border-color: var(--cor-borda) !important;
   font-size: var(--texto-sm);
 }
+
