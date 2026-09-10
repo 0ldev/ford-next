@@ -89,7 +89,7 @@ def compute_gap_com_fallback(
     tem_gap_proprio = n_servicos >= min_servicos_para_gap_proprio
     resultado = gap_relativo.where(tem_gap_proprio, gap_fallback_modelo)
 
-    if intervalo_mediano_geral:
+    if intervalo_mediano_geral is not None and not pd.isna(intervalo_mediano_geral) and intervalo_mediano_geral != 0:
         gap_fallback_geral = idade_dias / intervalo_mediano_geral
         resultado = resultado.fillna(gap_fallback_geral)
 

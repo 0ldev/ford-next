@@ -3,6 +3,48 @@ from __future__ import annotations
 
 import pandas as pd
 
+from src.application.train_risk_model import RiskClassifier
+from src.domain.risk_label import apply_low_volume_heuristic
+
+# RANGER e KA são os únicos modelos de veículo com VINs suficientes para validar um
+# classificador de ML com confiança (ver `risk_label.apply_low_volume_heuristic` e as
+# issues de segmentação por modelo/comparação modelo-específico vs. geral). Para os
+# demais modelos, `compute_score_risco` usa a heurística de threshold em vez do score
+# do modelo treinado.
+MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML: tuple[str, ...] = ("RANGER", "KA")
+
+
+def compute_score_risco(
+    df: pd.DataFrame,
+    modelo: RiskClassifier,
+    feature_columns: tuple[str, ...],
+    model_col: str = "ModelName",
+    modelos_com_ml: tuple[str, ...] = MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML,
+    output_col: str = "score_risco",
+) -> pd.DataFrame:
+    """Score de risco por VIN, segmentado por volume de dados do modelo do veículo.
+
+    VINs de `modelos_com_ml` (RANGER/KA por padrão) recebem a probabilidade do
+    `modelo` de ML treinado (`predict_proba`). Os demais recebem
+    `risk_label.apply_low_volume_heuristic` (mesma regra de threshold do rótulo
+    `em_risco`, sem ML — não há VINs suficientes para validar um classificador com
+    confiança para eles) convertida para 0.0/1.0, mantendo `output_col` na mesma
+    escala [0, 1] nos dois casos.
+
+    `df` não é modificado.
+    """
+    result = df.copy()
+    tem_volume_para_ml = result[model_col].isin(modelos_com_ml)
+
+    result.loc[tem_volume_para_ml, output_col] = modelo.predict_proba(
+        result.loc[tem_volume_para_ml, list(feature_columns)]
+    )[:, 1]
+
+    heuristica = apply_low_volume_heuristic(result.loc[~tem_volume_para_ml])
+    result.loc[~tem_volume_para_ml, output_col] = heuristica["em_risco"].astype(float)
+
+    return result
+
 
 def rank_by_dealer(
     df: pd.DataFrame,
@@ -56,10 +98,16 @@ def explain_risk(dias_desde_ultimo_servico: float, gap_relativo: float) -> str:
 def add_risk_explanation(
     df: pd.DataFrame,
     dias_col: str = "dias_desde_ultimo_servico",
-    gap_col: str = "gap_relativo",
+    gap_col: str = "gap_com_fallback",
     output_col: str = "motivo_risco",
 ) -> pd.DataFrame:
     """Adiciona a coluna `output_col` com a frase de `explain_risk` para cada linha de `df`.
+
+    Default de `gap_col` é `gap_com_fallback`, não `gap_relativo` — é a coluna que
+    efetivamente alimenta `FEATURE_COLUMNS`/`score_risco` (`train_risk_model.py`). Para
+    os VINs que caem no fallback (1 único serviço, ~29% da base), `gap_relativo` fica
+    nulo e não é o número que gerou o score; citar ele no motivo explicaria uma decisão
+    diferente da que o modelo/heurística realmente tomou.
 
     `df` não é modificado.
     """

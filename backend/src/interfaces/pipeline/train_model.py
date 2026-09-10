@@ -1,76 +1,28 @@
 """Treina o modelo de risco de evasão a partir das features processadas e grava o artefato em backend/models/."""
-import pandas as pd
-
-from src.application.build_vehicle_features import (
-    build_gap_relativo_table,
-    compute_median_service_interval_by_model,
-    compute_service_count_and_gap_std,
-    compute_vehicle_age_days,
-)
 from src.application.train_risk_model import (
     FEATURE_COLUMNS,
+    compare_thresholds,
     evaluate_auc,
     evaluate_precision_at_k,
     temporal_train_test_split,
     train_decision_tree,
     train_logistic_regression,
 )
-from src.domain.risk_label import compute_em_risco, compute_gap_com_fallback
+from src.domain.risk_label import GAP_RELATIVO_THRESHOLD
 from src.infrastructure.model_repository import verify_round_trip
-from src.infrastructure.xlsx_reader import (
-    DATE_COLUMNS,
-    DEDUP_SUBSET,
-    normalize_date_columns,
-    remove_duplicate_service_orders,
-)
-
-RAW_PATH = "data/raw/vin_share.zip"
-
-
-def build_dataset(reference_date: pd.Timestamp | None = None) -> pd.DataFrame:
-    """Lê o histórico de serviços e monta a tabela de features + rótulo `em_risco` por VIN.
-
-    Inclui `ultimo_servico` (data do serviço mais recente de cada VIN) — é a coluna
-    usada como referência temporal no split de treino/teste.
-    """
-    if reference_date is None:
-        reference_date = pd.Timestamp.now().normalize()
-
-    df = pd.read_csv(RAW_PATH, compression="zip", low_memory=False)
-    df, _ = normalize_date_columns(df, DATE_COLUMNS)
-    df, _ = remove_duplicate_service_orders(df, DEDUP_SUBSET)
-
-    tabela = build_gap_relativo_table(df, reference_date=reference_date)
-
-    n_servicos = compute_service_count_and_gap_std(df)[["VIN_Hash", "n_servicos"]]
-    idade = compute_vehicle_age_days(
-        df.groupby("VIN_Hash", as_index=False)[["SalesDate", "DeliveryDate"]].first(),
-        reference_date=reference_date,
-    )[["VIN_Hash", "idade_dias"]]
-    ultimo_servico = df.groupby("VIN_Hash")["ServiceDate"].max().rename("ultimo_servico").reset_index()
-
-    tabela = (
-        tabela.merge(n_servicos, on="VIN_Hash", how="left")
-        .merge(idade, on="VIN_Hash", how="left")
-        .merge(ultimo_servico, on="VIN_Hash", how="left")
-    )
-
-    intervalo_mediano_geral = compute_median_service_interval_by_model(df)["mediana_dias"].median()
-    tabela["gap_com_fallback"] = compute_gap_com_fallback(
-        tabela["gap_relativo"],
-        tabela["idade_dias"],
-        tabela["intervalo_mediano_esperado"],
-        tabela["n_servicos"],
-        intervalo_mediano_geral=intervalo_mediano_geral,
-    )
-    tabela["em_risco"] = compute_em_risco(tabela["gap_com_fallback"])
-
-    return tabela
+from src.interfaces.pipeline.build_features import load_features
 
 
 def main() -> None:
-    tabela = build_dataset()
+    tabela = load_features()
     treino, teste, cutoff_date = temporal_train_test_split(tabela, date_col="ultimo_servico")
+
+    if len(treino) == 0 or len(teste) == 0:
+        raise ValueError(
+            f"split temporal gerou um conjunto vazio (treino={len(treino):,}, teste={len(teste):,}) "
+            f"com data de corte {cutoff_date} — ajuste train_fraction ou verifique a distribuicao "
+            "de 'ultimo_servico' na tabela de features"
+        )
 
     print(f"Total de VINs: {len(tabela):,}")
     print(f"Data de corte (80% do período): {cutoff_date}")
@@ -104,6 +56,14 @@ def main() -> None:
     precisao_top20 = evaluate_precision_at_k(modelo_logistico, teste, k_fraction=0.20)
     print(f"Precision@top-10% (LogisticRegression): {precisao_top10:.4f}")
     print(f"Precision@top-20% (LogisticRegression): {precisao_top20:.4f}")
+
+    # Reroda a comparação de thresholds a cada treino (em vez de confiar só no valor
+    # fixado em risk_label.GAP_RELATIVO_THRESHOLD) — evidência de que 2.0 continua
+    # sendo o corte mais plausível se o dataset mudar.
+    comparacao_thresholds = compare_thresholds(treino, teste)
+    print(f"\nSensibilidade do rótulo a outros thresholds de gap_relativo "
+          f"(threshold aplicado em produção: {GAP_RELATIVO_THRESHOLD}):")
+    print(comparacao_thresholds.to_string(index=False))
 
     # Modelo escolhido: LogisticRegression (ver justificativa na issue de comparação).
     X_teste = teste[list(FEATURE_COLUMNS)].dropna()

@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.application.generate_leads import add_risk_explanation, rank_by_dealer
+from src.application.generate_leads import add_risk_explanation, compute_score_risco, rank_by_dealer
 from src.application.train_risk_model import FEATURE_COLUMNS
 from src.infrastructure.model_repository import load_model
-from src.interfaces.pipeline.train_model import RAW_PATH, build_dataset
+from src.interfaces.pipeline.build_features import load_features
 
 OUTPUT_PATH = "data/processed/leads.csv"
 
@@ -23,29 +23,26 @@ LEADS_SCHEMA: dict[str, str] = {
 }
 
 
-def build_leads_table(reference_date: pd.Timestamp | None = None) -> pd.DataFrame:
-    """Monta a tabela de leads: score do modelo treinado, motivo do risco e concessionária.
+def build_leads_table() -> pd.DataFrame:
+    """Monta a tabela de leads: score de risco, motivo do risco e concessionária.
 
-    Reaproveita `build_dataset` (mesmas features do treino), o modelo já treinado e
-    salvo (`model_repository.load_model`) e `add_risk_explanation`/`rank_by_dealer`
-    (issues anteriores) — nenhuma lógica de negócio nova aqui, só orquestração.
+    Reaproveita a tabela de features processada (`build_features.load_features` — mesmas
+    features do treino, já com `DealerCode` da concessionária do serviço mais recente),
+    o modelo já treinado e salvo (`model_repository.load_model`) e
+    `compute_score_risco`/`add_risk_explanation`/`rank_by_dealer` (issues anteriores) —
+    nenhuma lógica de negócio nova aqui, só orquestração. `compute_score_risco` segmenta
+    o score por modelo de veículo: RANGER/KA usam o modelo de ML, os demais usam a
+    heurística de threshold (ver `application.generate_leads.MODELOS_COM_VOLUME_SUFICIENTE_PARA_ML`).
     """
-    tabela = build_dataset(reference_date=reference_date)
+    tabela = load_features()
     modelo = load_model()
 
     leads = tabela.dropna(subset=list(FEATURE_COLUMNS)).copy()
-    leads["score_risco"] = modelo.predict_proba(leads[list(FEATURE_COLUMNS)])[:, 1]
-    leads = add_risk_explanation(leads)
-
-    df_raw = pd.read_csv(RAW_PATH, compression="zip", low_memory=False)
-    dealer_por_vin = (
-        df_raw.dropna(subset=["ServiceDate"])
-        .sort_values("ServiceDate")
-        .groupby("VIN_Hash")["DealerCode"]
-        .last()
-        .reset_index()
-    )
-    leads = leads.merge(dealer_por_vin, on="VIN_Hash", how="left")
+    leads = compute_score_risco(leads, modelo, FEATURE_COLUMNS)
+    # gap_com_fallback, nao gap_relativo: e a coluna que realmente alimenta o score
+    # (FEATURE_COLUMNS) e a heuristica de baixo volume, inclusive para os VINs de
+    # fallback (1 unico servico) onde os dois valores divergem.
+    leads = add_risk_explanation(leads, gap_col="gap_com_fallback")
 
     return rank_by_dealer(leads, dealer_col="DealerCode", score_col="score_risco")
 

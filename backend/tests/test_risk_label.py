@@ -95,6 +95,18 @@ def test_min_servicos_para_gap_proprio_e_parametrizavel() -> None:
     assert resultado.iloc[0] == pytest.approx(1000.0 / 100.0)  # 2 servicos nao basta mais, usa fallback
 
 
+def test_intervalo_mediano_geral_zero_nao_propaga_infinito() -> None:
+    entrada = _entrada_fallback()
+    resultado = compute_gap_com_fallback(**entrada, intervalo_mediano_geral=0.0)
+    assert pd.isna(resultado.iloc[2])  # vC: intervalo geral 0 nao gera divisao por zero
+
+
+def test_intervalo_mediano_geral_nan_nao_propaga_nan() -> None:
+    entrada = _entrada_fallback()
+    resultado = compute_gap_com_fallback(**entrada, intervalo_mediano_geral=float("nan"))
+    assert pd.isna(resultado.iloc[2])  # vC: intervalo geral NaN e tratado como "nao informado"
+
+
 def test_gap_com_fallback_alimenta_em_risco_sem_nulos_quando_completo() -> None:
     entrada = _entrada_fallback()
     gap = compute_gap_com_fallback(**entrada, intervalo_mediano_geral=200.0)
