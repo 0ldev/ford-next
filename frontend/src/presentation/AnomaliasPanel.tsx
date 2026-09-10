@@ -1,6 +1,7 @@
 import { useAnomaliesData } from "../application/useAnomaliesData";
 import type { Anomaly, AnomalyTipo } from "../domain/types";
 import AnomaliaItem from "./AnomaliaItem";
+import EstadoErro from "./EstadoErro";
 
 /** Os três grupos do painel, na ordem em que o gestor deve olhar. */
 const GRUPOS: { tipo: AnomalyTipo; titulo: string; descricao: string }[] = [
@@ -33,11 +34,8 @@ export default function AnomaliasPanel() {
 
   if (error) {
     return (
-      <div className="painel-estado" role="alert">
-        <p className="mensagem-erro">{error.message}</p>
-        <button type="button" className="botao-secundario" onClick={recarregar}>
-          Tentar novamente
-        </button>
+      <div className="painel-estado">
+        <EstadoErro mensagem={error.message} onTentarNovamente={recarregar} />
       </div>
     );
   }
@@ -68,7 +66,7 @@ export default function AnomaliasPanel() {
             <p className="anomalias-grupo-descricao">{grupo.descricao}</p>
 
             {doGrupo.length === 0 ? (
-              <p className="anomalias-vazio">Nenhuma anomalia neste grupo.</p>
+              <p className="lista-vazia">Nenhuma anomalia neste grupo.</p>
             ) : (
               <ul className="anomalias-lista">
                 {doGrupo.map((anomalia) => (

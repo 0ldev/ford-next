@@ -12,6 +12,7 @@ import {
 import { useTrendData } from "../application/useTrendData";
 import type { TrendResponse } from "../domain/types";
 import { MODELOS } from "../infrastructure/mockData";
+import EstadoErro from "./EstadoErro";
 import SeletorModelos from "./SeletorModelos";
 
 export interface TrendChartProps {
@@ -119,11 +120,8 @@ export default function TrendChart({ periodoInicio, periodoFim }: TrendChartProp
       />
 
       {error ? (
-        <div className="grafico-estado" role="alert">
-          <p className="mensagem-erro">{error.message}</p>
-          <button type="button" className="botao-secundario" onClick={recarregar}>
-            Tentar novamente
-          </button>
+        <div className="grafico-estado">
+          <EstadoErro mensagem={error.message} onTentarNovamente={recarregar} />
         </div>
       ) : loading ? (
         <div className="grafico-estado" role="status">
