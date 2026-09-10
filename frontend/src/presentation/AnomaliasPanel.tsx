@@ -1,6 +1,6 @@
 import { useAnomaliesData } from "../application/useAnomaliesData";
-import type { Anomaly, AnomalyTipo } from "../domain/types";
-import AnomaliaItem from "./AnomaliaItem";
+import type { Anomaly, AnomalyTipo, VinShareFiltros } from "../domain/types";
+import AnomaliaItem, { atalhoDaAnomalia } from "./AnomaliaItem";
 import EstadoErro from "./EstadoErro";
 
 /** Os três grupos do painel, na ordem em que o gestor deve olhar. */
@@ -29,7 +29,12 @@ const GRUPOS: { tipo: AnomalyTipo; titulo: string; descricao: string }[] = [
  * seria lido como "não verificamos isso", quando o certo é "verificamos e
  * não há nada".
  */
-export default function AnomaliasPanel() {
+export interface AnomaliasPanelProps {
+  /** Aplica o recorte de uma anomalia nos filtros da página. */
+  onFiltrar: (filtro: Partial<VinShareFiltros>) => void;
+}
+
+export default function AnomaliasPanel({ onFiltrar }: AnomaliasPanelProps) {
   const { data, loading, error, recarregar } = useAnomaliesData();
 
   if (error) {
@@ -59,6 +64,7 @@ export default function AnomaliasPanel() {
     (pior, atual) => (!pior || atual.severidade > pior.severidade ? atual : pior),
     undefined
   );
+  const atalhoDoDestaque = maisSevera ? atalhoDaAnomalia(maisSevera) : null;
 
   return (
     <>
@@ -69,6 +75,15 @@ export default function AnomaliasPanel() {
           </span>
           <strong className="destaque-anomalia-entidade">{maisSevera.entidade}</strong>
           <span className="destaque-anomalia-descricao">{maisSevera.descricao}</span>
+          {atalhoDoDestaque && (
+            <button
+              type="button"
+              className="botao-secundario destaque-anomalia-acao"
+              onClick={() => onFiltrar(atalhoDoDestaque.filtro)}
+            >
+              {atalhoDoDestaque.rotulo}
+            </button>
+          )}
         </p>
       )}
 
@@ -94,6 +109,7 @@ export default function AnomaliasPanel() {
                     <AnomaliaItem
                       key={`${anomalia.tipo}-${anomalia.entidade}`}
                       anomalia={anomalia}
+                      onFiltrar={onFiltrar}
                     />
                   ))}
                 </ul>
