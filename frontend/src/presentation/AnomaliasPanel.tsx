@@ -50,36 +50,58 @@ export default function AnomaliasPanel() {
 
   const anomalias: Anomaly[] = data ?? [];
 
+  /*
+   * O painel lista seis anomalias; numa demonstração ninguém compara seis
+   * severidades de cabeça. Esta linha diz de saída qual é a pior, a partir
+   * do mesmo dado já carregado — sem busca nova.
+   */
+  const maisSevera = anomalias.reduce<Anomaly | undefined>(
+    (pior, atual) => (!pior || atual.severidade > pior.severidade ? atual : pior),
+    undefined
+  );
+
   return (
-    <div className="anomalias">
-      {GRUPOS.map((grupo) => {
-        const doGrupo = anomalias
-          .filter((anomalia) => anomalia.tipo === grupo.tipo)
-          .sort((a, b) => b.severidade - a.severidade);
+    <>
+      {maisSevera && (
+        <p className="destaque-anomalia">
+          <span className="destaque-anomalia-rotulo">
+            Maior alerta · {Math.round(maisSevera.severidade * 100)}% de severidade
+          </span>
+          <strong className="destaque-anomalia-entidade">{maisSevera.entidade}</strong>
+          <span className="destaque-anomalia-descricao">{maisSevera.descricao}</span>
+        </p>
+      )}
 
-        return (
-          <section className="anomalias-grupo" key={grupo.tipo}>
-            <h3 className="anomalias-grupo-titulo">
-              {grupo.titulo}
-              <span className="anomalias-grupo-contagem">{doGrupo.length}</span>
-            </h3>
-            <p className="anomalias-grupo-descricao">{grupo.descricao}</p>
+      <div className="anomalias">
+        {GRUPOS.map((grupo) => {
+          const doGrupo = anomalias
+            .filter((anomalia) => anomalia.tipo === grupo.tipo)
+            .sort((a, b) => b.severidade - a.severidade);
 
-            {doGrupo.length === 0 ? (
-              <p className="lista-vazia">Nenhuma anomalia neste grupo.</p>
-            ) : (
-              <ul className="anomalias-lista">
-                {doGrupo.map((anomalia) => (
-                  <AnomaliaItem
-                    key={`${anomalia.tipo}-${anomalia.entidade}`}
-                    anomalia={anomalia}
-                  />
-                ))}
-              </ul>
-            )}
-          </section>
-        );
-      })}
-    </div>
+          return (
+            <section className="anomalias-grupo" key={grupo.tipo}>
+              <h3 className="anomalias-grupo-titulo">
+                {grupo.titulo}
+                <span className="anomalias-grupo-contagem">{doGrupo.length}</span>
+              </h3>
+              <p className="anomalias-grupo-descricao">{grupo.descricao}</p>
+
+              {doGrupo.length === 0 ? (
+                <p className="lista-vazia">Nenhuma anomalia neste grupo.</p>
+              ) : (
+                <ul className="anomalias-lista">
+                  {doGrupo.map((anomalia) => (
+                    <AnomaliaItem
+                      key={`${anomalia.tipo}-${anomalia.entidade}`}
+                      anomalia={anomalia}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </>
   );
 }

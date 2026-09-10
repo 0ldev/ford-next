@@ -804,3 +804,126 @@ body {
   font-size: var(--texto-sm);
 }
 
+/* Narrativa: resumo do recorte ativo ----------------------------------- */
+
+.resumo-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espaco-2);
+  margin: 0;
+  padding: var(--espaco-3) var(--espaco-4);
+  border-left: 3px solid var(--cor-marca-clara);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: var(--azul-100);
+  font-size: var(--texto-md);
+  color: var(--cor-texto);
+}
+
+.resumo-filtros-rotulo {
+  font-size: var(--texto-2xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--entreletras-etiqueta);
+  text-transform: uppercase;
+  color: var(--cor-marca);
+}
+
+/* Narrativa: maior alerta do painel de anomalias ----------------------- */
+
+.destaque-anomalia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-1);
+  margin: 0 0 var(--espaco-5);
+  padding: var(--espaco-4);
+  border-left: 4px solid var(--risco-alto);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  background: var(--risco-alto-fundo);
+}
+
+.destaque-anomalia-rotulo {
+  font-size: var(--texto-2xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--entreletras-etiqueta);
+  text-transform: uppercase;
+  color: var(--risco-alto);
+}
+
+.destaque-anomalia-entidade {
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-medio);
+  color: var(--azul-900);
+}
+
+.destaque-anomalia-descricao {
+  font-size: var(--texto-md);
+  color: var(--cor-texto);
+}
+
+/* Narrativa: card de ação prioritária ---------------------------------- */
+
+.acao-prioritaria {
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-3);
+  padding: var(--espaco-4) var(--espaco-5);
+  border: 1px solid var(--cor-borda);
+  border-left: 4px solid var(--risco-alto);
+  border-radius: var(--raio-sm);
+  background: var(--cor-superficie-sutil);
+}
+
+.acao-prioritaria-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--espaco-3);
+}
+
+.acao-prioritaria-titulo {
+  margin: 0;
+  font-size: var(--texto-xs);
+  font-weight: var(--peso-forte);
+  letter-spacing: var(--entreletras-etiqueta);
+  text-transform: uppercase;
+  color: var(--risco-alto);
+}
+
+.acao-prioritaria-veiculo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--espaco-3);
+  margin: 0;
+  font-size: var(--texto-lg);
+  color: var(--azul-900);
+}
+
+.acao-prioritaria-vin {
+  font-family: var(--fonte-mono);
+  font-size: var(--texto-2xs);
+  color: var(--cor-texto-suave);
+}
+
+.acao-prioritaria-dealer {
+  font-size: var(--texto-sm);
+  color: var(--cor-texto-suave);
+}
+
+.acao-prioritaria-motivo {
+  margin: 0;
+  font-size: var(--texto-md);
+  color: var(--cor-texto);
+}
+
+.acao-prioritaria-acao {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espaco-1);
+}
+
+.acao-prioritaria .detalhe-mensagem {
+  margin-top: var(--espaco-2);
+}
