@@ -35,6 +35,8 @@
   --risco-medio-fundo: #fcf0e2;
   --risco-baixo: var(--neutro-600);
   --risco-baixo-fundo: var(--neutro-100);
+  /* Único verde da paleta: usado só quando o indicador supera a referência. */
+  --verde-positivo: #0b7a5a;
 
   /* --- Papéis semânticos ---------------------------------------- */
   --cor-fundo: var(--neutro-50);

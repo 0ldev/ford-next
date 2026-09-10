@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { EstadoAcao } from "../application/useAcoesRecomendadas";
 import { nivelDeRisco } from "../domain/severidade";
 import type { Lead } from "../domain/types";
+import BotaoCopiar from "./BotaoCopiar";
 import EstadoErro from "./EstadoErro";
 import { ROTULO_ACAO } from "./rotulos";
 
@@ -77,6 +78,7 @@ export default function AcaoPrioritaria({
             {ROTULO_ACAO[acao.data.acao]}
           </span>
           <p className="detalhe-mensagem">{acao.data.mensagem}</p>
+          <BotaoCopiar texto={acao.data.mensagem} />
         </div>
       ) : null}
     </aside>
