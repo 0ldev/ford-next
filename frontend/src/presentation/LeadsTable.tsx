@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useAcoesRecomendadas } from "../application/useAcoesRecomendadas";
 import { useLeads } from "../application/useLeads";
+import { LIMIAR_ALTO, LIMIAR_MEDIO, nivelDeRisco } from "../domain/severidade";
 import type { AcaoTipo, Lead } from "../domain/types";
 import { CONCESSIONARIAS } from "../infrastructure/mockData";
 import Dropdown, { type DropdownOption } from "./Dropdown";
+import EstadoErro from "./EstadoErro";
 
 export interface LeadsTableProps {
   /** dealerCode vindo da barra de filtros; ausente traz a fila da rede toda. */
@@ -13,15 +15,15 @@ export interface LeadsTableProps {
 type Ordem = "asc" | "desc";
 type FaixaScore = "medio" | "alto";
 
-const OPCOES_FAIXA: DropdownOption[] = [
-  { value: "medio", label: "Risco médio ou maior (≥ 30%)" },
-  { value: "alto", label: "Risco alto (≥ 70%)" }
-];
-
 const PISO_FAIXA: Record<FaixaScore, number> = {
-  medio: 0.3,
-  alto: 0.7
+  medio: LIMIAR_MEDIO,
+  alto: LIMIAR_ALTO
 };
+
+const OPCOES_FAIXA: DropdownOption[] = [
+  { value: "medio", label: `Risco médio ou maior (≥ ${Math.round(LIMIAR_MEDIO * 100)}%)` },
+  { value: "alto", label: `Risco alto (≥ ${Math.round(LIMIAR_ALTO * 100)}%)` }
+];
 
 const ROTULO_ACAO: Record<AcaoTipo, string> = {
   contato_ativo: "Contato ativo",
@@ -34,13 +36,6 @@ function nomeDaConcessionaria(dealerCode: string): string {
   return CONCESSIONARIAS.find((item) => item.dealerCode === dealerCode)?.nome ?? dealerCode;
 }
 
-/** Faixa de risco do score, usada para colorir a célula. */
-export function faixaDoScore(score: number): "alto" | "medio" | "baixo" {
-  if (score >= 0.7) return "alto";
-  if (score >= 0.3) return "medio";
-  return "baixo";
-}
-
 function formatarScore(score: number): string {
   return `${Math.round(score * 100)}%`;
 }
@@ -48,6 +43,15 @@ function formatarScore(score: number): string {
 /** VIN é um hash de 40 caracteres; a tabela mostra o prefixo e guarda o resto no title. */
 function encurtarVin(vin: string): string {
   return vin.length > 12 ? `${vin.slice(0, 12)}…` : vin;
+}
+
+/**
+ * Prefixo curto para leitura em voz alta. Soletrar os 40 caracteres do hash
+ * não ajuda ninguém; os 8 primeiros identificam a linha e casam com o que a
+ * tabela mostra.
+ */
+function vinParaLeitura(vin: string): string {
+  return vin.length > 8 ? `${vin.slice(0, 8)}, abreviado` : vin;
 }
 
 /**
@@ -84,11 +88,8 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
 
   if (error) {
     return (
-      <div className="painel-estado" role="alert">
-        <p className="mensagem-erro">{error.message}</p>
-        <button type="button" className="botao-secundario" onClick={recarregar}>
-          Tentar novamente
-        </button>
+      <div className="painel-estado">
+        <EstadoErro mensagem={error.message} onTentarNovamente={recarregar} />
       </div>
     );
   }
@@ -118,7 +119,7 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
       </div>
 
       {leads.length === 0 ? (
-        <p className="anomalias-vazio">Nenhum lead nesta faixa de risco.</p>
+        <p className="lista-vazia">Nenhum lead nesta faixa de risco.</p>
       ) : (
         <div className="tabela-rolagem">
           <table className="tabela">
@@ -178,7 +179,7 @@ interface LinhaLeadProps {
 }
 
 function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: LinhaLeadProps) {
-  const faixa = faixaDoScore(lead.score);
+  const nivel = nivelDeRisco(lead.score);
   const idDetalhe = `detalhe-${lead.vin}`;
 
   return (
@@ -194,7 +195,7 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
           >
             <span aria-hidden="true">{expandido ? "−" : "+"}</span>
             <span className="sr-only">
-              {expandido ? "Recolher" : "Expandir"} detalhes do VIN {lead.vin}
+              {expandido ? "Recolher" : "Expandir"} detalhes do VIN {vinParaLeitura(lead.vin)}
             </span>
           </button>
         </td>
@@ -204,14 +205,17 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
         <td>{nomeDaConcessionaria(lead.dealerCode)}</td>
         <td>{lead.modelo}</td>
         <td className="coluna-score">
-          <span className={`score score-${faixa}`}>{formatarScore(lead.score)}</span>
+          <span className={`score score-${nivel}`}>{formatarScore(lead.score)}</span>
         </td>
         <td className="celula-motivo">{lead.motivo}</td>
       </tr>
 
-      {expandido && (
-        <tr className="linha-detalhe" id={idDetalhe}>
-          <td colSpan={6}>
+      {/* A linha existe sempre, oculta quando recolhida: assim o alvo do
+          aria-controls do botão nunca é um id inexistente. O conteúdo, esse
+          sim, só é montado quando a linha abre. */}
+      <tr className="linha-detalhe" id={idDetalhe} hidden={!expandido}>
+        <td colSpan={6}>
+          {expandido && (
             <div className="detalhe">
               <div className="detalhe-bloco">
                 <h4 className="detalhe-titulo">Motivo do risco</h4>
@@ -226,16 +230,10 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
                     Buscando ação recomendada…
                   </p>
                 ) : acao.error ? (
-                  <div role="alert">
-                    <p className="mensagem-erro">{acao.error.message}</p>
-                    <button
-                      type="button"
-                      className="botao-secundario"
-                      onClick={onTentarNovamente}
-                    >
-                      Tentar novamente
-                    </button>
-                  </div>
+                  <EstadoErro
+                    mensagem={acao.error.message}
+                    onTentarNovamente={onTentarNovamente}
+                  />
                 ) : acao.data ? (
                   <>
                     <span className={`selo-acao selo-acao-${acao.data.acao}`}>
@@ -246,9 +244,9 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
                 ) : null}
               </div>
             </div>
-          </td>
-        </tr>
-      )}
+          )}
+        </td>
+      </tr>
     </>
   );
 }
