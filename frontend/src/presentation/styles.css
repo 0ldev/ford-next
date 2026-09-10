@@ -80,7 +80,15 @@ body {
 
 /* Mensagens compartilhadas ---------------------------------------- */
 
-.mensagem-erro {
+/* Bloco de erro único do dashboard (componente EstadoErro). */
+.estado-erro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--espaco-3);
+}
+
+.estado-erro-mensagem {
   margin: 0;
   font-size: var(--texto-md);
   color: var(--cor-erro);
@@ -186,8 +194,8 @@ body {
 }
 
 .checkbox input {
-  width: 16px;
-  height: 16px;
+  width: var(--tamanho-checkbox);
+  height: var(--tamanho-checkbox);
   accent-color: var(--cor-marca);
   cursor: pointer;
 }
@@ -230,7 +238,7 @@ body {
   gap: var(--espaco-2);
   justify-content: center;
   /* Altura fixa nos três estados: a página não pula quando o dado chega. */
-  min-height: 148px;
+  min-height: var(--altura-kpi);
   padding: var(--espaco-4) var(--espaco-5);
   border: 1px solid var(--cor-borda);
   border-left: 4px solid var(--cor-marca);
@@ -298,19 +306,6 @@ body {
   .kpi-skeleton {
     animation: none;
   }
-}
-
-.kpi-erro {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--espaco-3);
-}
-
-.kpi-erro-mensagem {
-  margin: 0;
-  font-size: var(--texto-md);
-  color: var(--cor-erro);
 }
 
 /* Gráfico de tendência ---------------------------------------------- */
@@ -388,8 +383,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
+  min-width: var(--tamanho-contador);
+  height: var(--tamanho-contador);
   padding: 0 var(--espaco-2);
   border-radius: var(--raio-pilula);
   background: var(--azul-100);
@@ -405,7 +400,7 @@ body {
   color: var(--cor-texto-suave);
 }
 
-.anomalias-vazio {
+.lista-vazia {
   margin: 0;
   padding: var(--espaco-4);
   border: 1px dashed var(--cor-borda);
@@ -431,17 +426,17 @@ body {
   background: var(--cor-superficie);
 }
 
-.anomalia-alta {
+.anomalia-alto {
   border-left-color: var(--risco-alto);
   background: var(--risco-alto-fundo);
 }
 
-.anomalia-media {
+.anomalia-medio {
   border-left-color: var(--risco-medio);
   background: var(--risco-medio-fundo);
 }
 
-.anomalia-baixa {
+.anomalia-baixo {
   border-left-color: var(--neutro-400);
 }
 
@@ -466,15 +461,15 @@ body {
   white-space: nowrap;
 }
 
-.anomalia-selo-alta {
+.anomalia-selo-alto {
   color: var(--risco-alto);
 }
 
-.anomalia-selo-media {
+.anomalia-selo-medio {
   color: var(--risco-medio);
 }
 
-.anomalia-selo-baixa {
+.anomalia-selo-baixo {
   color: var(--cor-texto-suave);
 }
 
@@ -485,7 +480,7 @@ body {
 }
 
 .anomalia-barra {
-  height: 6px;
+  height: var(--altura-barra-severidade);
   border-radius: var(--raio-pilula);
   background: var(--neutro-200);
   overflow: hidden;
@@ -497,11 +492,11 @@ body {
   background: var(--neutro-400);
 }
 
-.anomalia-alta .anomalia-barra-preenchida {
+.anomalia-alto .anomalia-barra-preenchida {
   background: var(--risco-alto);
 }
 
-.anomalia-media .anomalia-barra-preenchida {
+.anomalia-medio .anomalia-barra-preenchida {
   background: var(--risco-medio);
 }
 
@@ -531,9 +526,16 @@ body {
   color: var(--cor-texto-suave);
 }
 
-/* A tabela rola dentro do próprio container; a página nunca rola na horizontal. */
+/*
+ * A tabela rola dentro do próprio container — na horizontal quando não cabe,
+ * e na vertical a partir de --altura-max-tabela. Essa rolagem vertical é o
+ * que dá eixo ao `position: sticky` do cabeçalho: sem ela o container tem a
+ * altura do conteúdo, nunca rola por dentro, e o cabeçalho sobe junto com a
+ * página em vez de grudar.
+ */
 .tabela-rolagem {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: var(--altura-max-tabela);
   border: 1px solid var(--cor-borda);
   border-radius: var(--raio-sm);
 }
@@ -557,7 +559,9 @@ body {
   top: 0;
   z-index: 1;
   background: var(--neutro-100);
-  border-bottom: 1px solid var(--cor-borda);
+  /* Sombra em vez de borda: bordas de célula sticky somem ao rolar. */
+  box-shadow: inset 0 -1px 0 var(--cor-borda);
+  border-bottom: 0;
   font-size: var(--texto-2xs);
   font-weight: var(--peso-forte);
   letter-spacing: var(--entreletras-etiqueta);
@@ -606,7 +610,7 @@ body {
 }
 
 .coluna-expandir {
-  width: 44px;
+  width: var(--largura-coluna-expandir);
 }
 
 .coluna-score {
@@ -614,8 +618,8 @@ body {
 }
 
 .botao-expandir {
-  width: 24px;
-  height: 24px;
+  width: var(--tamanho-botao-expandir);
+  height: var(--tamanho-botao-expandir);
   border: 1px solid var(--cor-borda);
   border-radius: var(--raio-sm);
   background: var(--cor-superficie);
@@ -644,8 +648,8 @@ body {
 
 .score {
   display: inline-block;
-  min-width: 48px;
-  padding: 2px var(--espaco-2);
+  min-width: var(--largura-minima-score);
+  padding: var(--espaco-0) var(--espaco-2);
   border-radius: var(--raio-pilula);
   font-weight: var(--peso-forte);
   font-variant-numeric: tabular-nums;
@@ -669,6 +673,11 @@ body {
 
 /* Detalhe da linha expandida ------------------------------------------ */
 
+/* Oculta explicitamente: o atributo hidden sozinho perde para display:table-row. */
+.linha-detalhe[hidden] {
+  display: none;
+}
+
 .linha-detalhe td {
   padding-top: 0;
   background: var(--azul-100);
@@ -678,7 +687,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--espaco-5);
-  padding: 0 0 var(--espaco-4) 44px;
+  padding: 0 0 var(--espaco-4) var(--largura-coluna-expandir);
 }
 
 .detalhe-titulo {
@@ -706,7 +715,7 @@ body {
 
 .selo-acao {
   display: inline-block;
-  padding: 3px var(--espaco-3);
+  padding: var(--espaco-0) var(--espaco-3);
   border-radius: var(--raio-pilula);
   font-size: var(--texto-2xs);
   font-weight: var(--peso-forte);

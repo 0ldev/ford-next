@@ -1,22 +1,14 @@
+import { nivelDeRisco, type NivelRisco } from "../domain/severidade";
 import type { Anomaly } from "../domain/types";
 
 export interface AnomaliaItemProps {
   anomalia: Anomaly;
 }
 
-export type FaixaSeveridade = "alta" | "media" | "baixa";
-
-/** Faixas usadas para colorir o item; o número exato aparece no rótulo. */
-export function faixaDaSeveridade(severidade: number): FaixaSeveridade {
-  if (severidade >= 0.7) return "alta";
-  if (severidade >= 0.4) return "media";
-  return "baixa";
-}
-
-const ROTULO_FAIXA: Record<FaixaSeveridade, string> = {
-  alta: "Severidade alta",
-  media: "Severidade média",
-  baixa: "Severidade baixa"
+const ROTULO_NIVEL: Record<NivelRisco, string> = {
+  alto: "Severidade alta",
+  medio: "Severidade média",
+  baixo: "Severidade baixa"
 };
 
 /**
@@ -26,17 +18,20 @@ const ROTULO_FAIXA: Record<FaixaSeveridade, string> = {
  * barra e percentual escrito — para não depender só de cor: em impressão
  * preto e branco ou para quem não distingue as cores, a barra e o número
  * seguem legíveis.
+ *
+ * Os limiares vêm de `domain/severidade` para casar com os da tabela de
+ * leads, que usa a mesma escala de cores.
  */
 export default function AnomaliaItem({ anomalia }: AnomaliaItemProps) {
-  const faixa = faixaDaSeveridade(anomalia.severidade);
+  const nivel = nivelDeRisco(anomalia.severidade);
   const percentual = Math.round(anomalia.severidade * 100);
 
   return (
-    <li className={`anomalia anomalia-${faixa}`}>
+    <li className={`anomalia anomalia-${nivel}`}>
       <div className="anomalia-cabecalho">
         <span className="anomalia-entidade">{anomalia.entidade}</span>
-        <span className={`anomalia-selo anomalia-selo-${faixa}`}>
-          {ROTULO_FAIXA[faixa]} · {percentual}%
+        <span className={`anomalia-selo anomalia-selo-${nivel}`}>
+          {ROTULO_NIVEL[nivel]} · {percentual}%
         </span>
       </div>
 

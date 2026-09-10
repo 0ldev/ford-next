@@ -1,3 +1,5 @@
+import EstadoErro from "./EstadoErro";
+
 export interface KpiCardProps {
   /** Rótulo do indicador, ex.: "VIN Share estimado". */
   label: string;
@@ -48,14 +50,7 @@ export default function KpiCard({
       <span className="kpi-label">{label}</span>
 
       {erro ? (
-        <div className="kpi-erro" role="alert">
-          <p className="kpi-erro-mensagem">{erro}</p>
-          {onTentarNovamente && (
-            <button type="button" className="botao-secundario" onClick={onTentarNovamente}>
-              Tentar novamente
-            </button>
-          )}
-        </div>
+        <EstadoErro mensagem={erro} onTentarNovamente={onTentarNovamente} />
       ) : loading || !temValor ? (
         // Barra cinza no lugar do número: ocupa o mesmo espaço do valor final.
         <div className="kpi-skeleton" role="status" aria-label={`Carregando ${label}`} />
