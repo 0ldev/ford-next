@@ -458,6 +458,7 @@ export function mockCatalogo(): Catalogo {
   return {
     modelos: [...MODELOS],
     concessionarias: CONCESSIONARIAS.map((item) => item.dealerCode),
-    tiposServico: [...TIPOS_SERVICO]
+    tiposServico: [...TIPOS_SERVICO],
+    periodoDisponivel: { inicio: `${PERIODO_PADRAO_INICIO}-01`, fim: `${PERIODO_PADRAO_FIM}-30` }
   };
 }

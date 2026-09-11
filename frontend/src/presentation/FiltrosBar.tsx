@@ -25,6 +25,26 @@ function normalizarData(valor: string): string | undefined {
   return valor === "" ? undefined : valor;
 }
 
+/** A mais tardia das duas datas ISO ("YYYY-MM-DD"), ignorando as ausentes. */
+function maiorData(a?: string, b?: string): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
+}
+
+/** A mais antiga das duas datas ISO ("YYYY-MM-DD"), ignorando as ausentes. */
+function menorData(a?: string, b?: string): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return a < b ? a : b;
+}
+
+/** "2020-01-03" vira "03/01/2020". */
+function formatarDataBr(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
 /**
  * Barra de filtros cruzados do dashboard.
  *
@@ -102,8 +122,10 @@ export default function FiltrosBar({ filtros, onChange, onLimpar, catalogo }: Fi
             className="campo-controle"
             type="date"
             value={filtros.periodoInicio ?? ""}
-            // Impede montar um intervalo invertido pela própria UI do navegador.
-            max={filtros.periodoFim}
+            // Não deixa escolher antes do início real dos dados nem montar um
+            // intervalo invertido (o que for mais restritivo dos dois vence).
+            min={catalogo?.periodoDisponivel?.inicio}
+            max={menorData(filtros.periodoFim, catalogo?.periodoDisponivel?.fim)}
             onChange={(evento) =>
               onChange({ periodoInicio: normalizarData(evento.target.value) })
             }
@@ -119,12 +141,21 @@ export default function FiltrosBar({ filtros, onChange, onLimpar, catalogo }: Fi
             className="campo-controle"
             type="date"
             value={filtros.periodoFim ?? ""}
-            min={filtros.periodoInicio}
+            min={maiorData(filtros.periodoInicio, catalogo?.periodoDisponivel?.inicio)}
+            max={catalogo?.periodoDisponivel?.fim}
             onChange={(evento) => onChange({ periodoFim: normalizarData(evento.target.value) })}
           />
         </div>
 
       </div>
+
+      {catalogo?.periodoDisponivel && (
+        <p className="filtros-ajuda">
+          Dados disponíveis de{" "}
+          <strong>{formatarDataBr(catalogo.periodoDisponivel.inicio)}</strong> a{" "}
+          <strong>{formatarDataBr(catalogo.periodoDisponivel.fim)}</strong>.
+        </p>
+      )}
 
       <div className="filtros-acoes">
         <button

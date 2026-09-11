@@ -5,8 +5,14 @@ Schema de resposta:
     {
       "modelos": ["7BC", "BDA", ..., "RANGER", ...],
       "concessionarias": ["100", "104", ..., "1009", ...],
-      "tiposServico": ["Maintenance"]
+      "tiposServico": ["Maintenance"],
+      "periodoDisponivel": {"inicio": "2020-01-03", "fim": "2026-05-04"}
     }
+
+`periodoDisponivel` é o intervalo de `ServiceDate` realmente presente no histórico —
+usado pelo front-end para limitar os seletores de período (`min`/`max` dos campos de
+data) a datas com dado de verdade, em vez de deixar o usuário escolher um recorte
+vazio. `null` só no caso degenerado de não haver nenhuma `ServiceDate` válida.
 
 Lista os valores distintos de `ModelName`, `DealerCode` e `ServiceType` do histórico de
 serviços real — as opções verdadeiras para os dropdowns de filtro do dashboard
@@ -29,10 +35,16 @@ from src.infrastructure.vin_share_repository import load_vin_share_data
 router = APIRouter()
 
 
+class PeriodoDisponivel(BaseModel):
+    inicio: str
+    fim: str
+
+
 class CatalogoResponse(BaseModel):
     modelos: list[str]
     concessionarias: list[str]
     tiposServico: list[str]
+    periodoDisponivel: PeriodoDisponivel | None
 
 
 @router.get("/catalogo", response_model=CatalogoResponse)
@@ -49,4 +61,19 @@ def get_catalogo() -> CatalogoResponse:
     )
     tipos_servico = sorted(df["ServiceType"].dropna().unique().tolist())
 
-    return CatalogoResponse(modelos=modelos, concessionarias=concessionarias, tiposServico=tipos_servico)
+    datas_validas = df["ServiceDate"].dropna()
+    periodo_disponivel = (
+        PeriodoDisponivel(
+            inicio=datas_validas.min().strftime("%Y-%m-%d"),
+            fim=datas_validas.max().strftime("%Y-%m-%d"),
+        )
+        if not datas_validas.empty
+        else None
+    )
+
+    return CatalogoResponse(
+        modelos=modelos,
+        concessionarias=concessionarias,
+        tiposServico=tipos_servico,
+        periodoDisponivel=periodo_disponivel,
+    )

@@ -86,11 +86,19 @@ export interface AcaoRecomendada {
 /* GET /api/catalogo                                                   */
 /* ------------------------------------------------------------------ */
 
+/** Início/fim (ISO "YYYY-MM-DD") do intervalo de datas com dado real no histórico. */
+export interface PeriodoDisponivel {
+  inicio: string;
+  fim: string;
+}
+
 /** Valores reais distintos do dataset — opções verdadeiras dos filtros do dashboard. */
 export interface Catalogo {
   modelos: string[];
   concessionarias: string[];
   tiposServico: string[];
+  /** `null` só no caso degenerado de o histórico não ter nenhuma data de serviço válida. */
+  periodoDisponivel: PeriodoDisponivel | null;
 }
 
 /* ------------------------------------------------------------------ */
