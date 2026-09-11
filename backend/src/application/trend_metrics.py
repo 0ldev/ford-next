@@ -30,6 +30,7 @@ def compute_monthly_share(
     grupos: list[str] | None = None,
     periodo_inicio: str | None = None,
     periodo_fim: str | None = None,
+    min_elegiveis: int = 0,
     vin_col: str = "VIN_Hash",
     service_date_col: str = "ServiceDate",
 ) -> list[dict]:
@@ -57,6 +58,13 @@ def compute_monthly_share(
     inexistente no histórico produz uma série de zeros, não erro. `periodo_inicio`/
     `periodo_fim` ("YYYY-MM") default para o primeiro/último mês com dado disponível.
 
+    `min_elegiveis` só filtra a auto-descoberta (quando `grupos` não é informado): um
+    grupo com poucos VINs elegíveis produz um `valor` mensal instável (ex.: 1 VIN
+    elegível vira 0% ou 100%, nunca nada no meio) — sem esse piso, um ranking por
+    `valor` fica dominado por ruído estatístico em vez de volume real. Um `grupo`
+    pedido explicitamente em `grupos` nunca é descartado por isso, mesmo abaixo do
+    piso (o pedido explícito vale mais que a heurística de auto-descoberta).
+
     Retorna uma lista de dicts `{group_col: ..., "competencia": "YYYY-MM", "valor": float}`.
     """
     historico = df.dropna(subset=[service_date_col])
@@ -80,7 +88,14 @@ def compute_monthly_share(
     fim = periodo_fim or (competencias_disponiveis[-1] if competencias_disponiveis else None)
     competencias = listar_competencias(inicio, fim) if inicio and fim else []
 
-    grupos_considerados = list(grupos) if grupos else sorted(historico[group_col].dropna().unique())
+    if grupos:
+        grupos_considerados = list(grupos)
+    else:
+        grupos_considerados = sorted(
+            grupo
+            for grupo in historico[group_col].dropna().unique()
+            if total_elegiveis_por_grupo.get(grupo, 0) >= min_elegiveis
+        )
 
     pontos = []
     for grupo in grupos_considerados:
@@ -114,5 +129,41 @@ def compute_trend(
 
     return [
         {"data": ponto["competencia"], "valor": ponto["valor"], "categoria": ponto["ModelName"]}
+        for ponto in pontos
+    ]
+
+
+def compute_trend_concessionaria(
+    df: pd.DataFrame,
+    concessionarias: list[str] | None = None,
+    periodo_inicio: str | None = None,
+    periodo_fim: str | None = None,
+    min_veiculos: int = 0,
+) -> list[dict]:
+    """Série temporal de VIN share por concessionária — schema de `GET /api/trend/concessionarias`.
+
+    Wrapper de `compute_monthly_share` agrupando por `DealerCode`. `DealerCode` é
+    numérico no histórico (`int64`), mas `concessionarias` — igual a
+    `VinShareFiltros.concessionaria`/`catalogo.concessionarias` — chega como texto; a
+    conversão pra `int` acontece aqui, não em `compute_monthly_share` (que é agnóstico
+    ao tipo do grupo). `ValueError` se algum código não for um inteiro válido.
+
+    `min_veiculos` (repassado como `min_elegiveis`) só entra quando `concessionarias`
+    não é informado — um ranking sem esse piso fica dominado por dealers de 1 VIN
+    (100% ou 0% ao sabor do mês, não sinal real; ver `compute_monthly_share`).
+    """
+    dealers = [int(codigo) for codigo in concessionarias] if concessionarias else None
+
+    pontos = compute_monthly_share(
+        df,
+        group_col="DealerCode",
+        grupos=dealers,
+        periodo_inicio=periodo_inicio,
+        periodo_fim=periodo_fim,
+        min_elegiveis=min_veiculos,
+    )
+
+    return [
+        {"data": ponto["competencia"], "valor": ponto["valor"], "categoria": str(ponto["DealerCode"])}
         for ponto in pontos
     ]

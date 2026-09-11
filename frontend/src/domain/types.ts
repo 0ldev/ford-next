@@ -36,6 +36,13 @@ export interface TrendPoint {
 export type TrendResponse = TrendPoint[];
 
 /* ------------------------------------------------------------------ */
+/* GET /api/trend/concessionarias                                      */
+/* ------------------------------------------------------------------ */
+
+/** Mesmo schema de `TrendPoint`, só que `categoria` é o dealerCode. */
+export type TrendConcessionariaResponse = TrendPoint[];
+
+/* ------------------------------------------------------------------ */
 /* GET /api/anomalies                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -49,6 +56,14 @@ export interface Anomaly {
   severidade: number;
   /** Texto pronto para exibição, sem necessidade de formatação extra. */
   descricao: string;
+  /** Mesma frase de `descricao`, sem o parêntese de valores — para o card visual. */
+  resumo: string;
+  /**
+   * `valorReferencia` -> `valorAtual`, ambos em % (mesma escala nos 3 tipos).
+   * Para `gap_modelo`, `valorReferencia` é a média da rede (não um "antes" temporal).
+   */
+  valorReferencia: number;
+  valorAtual: number;
 }
 
 export type AnomaliesResponse = Anomaly[];
@@ -66,9 +81,35 @@ export interface Lead {
   /** Justificativa legível do score, gerada pelo modelo. */
   motivo: string;
   modelo: string;
+  /** Dias desde o último serviço — também é o critério de desempate do score. */
+  diasSemServico: number;
 }
 
-export type LeadsResponse = Lead[];
+/**
+ * Página do resultado de `/api/leads`. `total` é a contagem do recorte inteiro
+ * (após concessionaria/scoreMinimo, antes de paginar) — é o que permite a tela
+ * mostrar "50 de 3214" e montar os botões de anterior/próxima.
+ */
+export interface LeadsResponse {
+  leads: Lead[];
+  total: number;
+  pagina: number;
+  tamanhoPagina: number;
+}
+
+/* ------------------------------------------------------------------ */
+/* GET /api/leads/distribuicao-score                                   */
+/* ------------------------------------------------------------------ */
+
+export interface FaixaScore {
+  /** % (0-100), limite inferior da faixa. */
+  faixaInicio: number;
+  /** % (0-100), limite superior da faixa (inclusive). */
+  faixaFim: number;
+  quantidade: number;
+}
+
+export type ScoreDistributionResponse = FaixaScore[];
 
 /* ------------------------------------------------------------------ */
 /* GET /api/leads/{vin}/acao                                           */
@@ -128,7 +169,24 @@ export interface TrendFiltros {
   periodoFim?: string;
 }
 
+/** Filtros do ranking de VIN Share por concessionária. */
+export interface TrendConcessionariaFiltros {
+  concessionaria?: string[];
+  periodoInicio?: string;
+  periodoFim?: string;
+  /** Piso de VINs elegíveis; ignorado se `concessionaria` for informado. */
+  minVeiculos?: number;
+}
+
 /** Filtros da tabela de leads. */
 export interface LeadsFiltros {
   concessionaria?: string;
+  /** Piso de score (0-1); ausente = sem piso, traz a fila inteira paginada. */
+  scoreMinimo?: number;
+  /** Teto exclusivo de score (0-1): só leads com score < esse valor. */
+  scoreMaximo?: number;
+  /** 1-based; ausente = primeira página. */
+  pagina?: number;
+  /** Ausente = padrão do backend (50). */
+  tamanhoPagina?: number;
 }

@@ -201,5 +201,5 @@ def test_compute_anomalies_combina_os_tres_tipos() -> None:
     assert isinstance(resultado, list)
     assert tipos <= {"queda_dealer", "gap_modelo", "pico_mainsource"}
     for anomalia in resultado:
-        assert set(anomalia.keys()) == {"tipo", "entidade", "severidade", "descricao"}
+        assert set(anomalia.keys()) == {"tipo", "entidade", "severidade", "descricao", "resumo", "valorReferencia", "valorAtual"}
         assert 0.0 <= anomalia["severidade"] <= 1.0

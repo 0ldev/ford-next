@@ -45,7 +45,7 @@ def test_anomalies_retorna_200_com_lista_bem_formada(monkeypatch: pytest.MonkeyP
     corpo = resposta.json()
     assert isinstance(corpo, list)
     for item in corpo:
-        assert set(item.keys()) == {"tipo", "entidade", "severidade", "descricao"}
+        assert set(item.keys()) == {"tipo", "entidade", "severidade", "descricao", "resumo", "valorReferencia", "valorAtual"}
         assert item["tipo"] in {"queda_dealer", "gap_modelo", "pico_mainsource"}
         assert 0.0 <= item["severidade"] <= 1.0
 

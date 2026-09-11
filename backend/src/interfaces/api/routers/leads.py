@@ -9,17 +9,35 @@ Schema de resposta — mesmo contrato de `frontend/src/domain/types.ts::LeadsRes
         "dealerCode": "100",
         "score": 1.0,
         "motivo": "1016 dias sem servico, 306% acima do intervalo esperado do modelo",
-        "modelo": "KA"
+        "modelo": "KA",
+        "diasSemServico": 1016.0
       },
       ...
     ]
 
 Query params:
     - concessionaria (opcional): dealerCode. Ausente = fila da rede toda.
+    - scoreMinimo (opcional, 0-1): só leads com score >= esse piso.
+    - scoreMaximo (opcional, 0-1): só leads com score < esse teto (banda exclusiva
+      no limite superior). Sem isso, "risco médio" filtrado só com scoreMinimo=0.3
+      continua trazendo os ~97 mil VINs empatados em score == 1.0 no topo — a
+      banda "médio" só isola o meio de verdade (30% a 69%) com os dois limites
+      juntos; "alto" (>=70%) não precisa de teto, é o topo aberto da distribuição.
+    - pagina (opcional, padrão 1) / tamanhoPagina (opcional, padrão 50, máx. 500):
+      paginação de verdade sobre o recorte filtrado — não um `head()` fixo.
 
-Paginação simples: sempre os `LIMIT_PADRAO` (50) leads de maior score dentro do
-recorte de concessionária (se informado) — não há offset/cursor, a issue pede só
-"top 50 por concessionária" como exemplo de paginação simples.
+Resposta: `{"leads": [...], "total": N, "pagina": P, "tamanhoPagina": T}`, onde
+`total` é a contagem do recorte inteiro (após concessionaria/scoreMinimo, antes da
+página) — é o que permite a tela mostrar "50 de 3214" e montar os botões de
+anterior/próxima.
+
+Ordenado por `score` desc e, em empate, por `diasSemServico` desc. O score sozinho
+empata MUITO (a heurística de baixo volume é binária — 0.0/1.0 — e o próprio modelo
+de ML satura perto de 0/1 dado o AUC≈1.0 do baseline; ~97 mil dos 175 mil VINs têm
+`score == 1.0` exatamente). Sem um desempate, a primeira página seria uma fatia
+arbitrária de um empate gigante, não uma ordem por urgência real — o desempate por
+dias sem serviço é o que faz o VIN genuinamente mais atrasado aparecer primeiro
+dentro do empate, em vez de depender da ordem de geração do CSV.
 
 ---
 
@@ -38,24 +56,41 @@ Schema de resposta — mesmo contrato de
 
 `acao` é um de `"lembrete" | "oferta" | "contato_ativo"`, calculado a partir do score
 real do VIN em `leads.csv` (`domain.action_rules.recomendar_acao`); `mensagem` vem de
-`domain.message_templates.montar_mensagem`, que também precisa de
-`dias_desde_ultimo_servico` — não faz parte do schema de `leads.csv` (contrato
-combinado com o Paulo), então é buscado em `vehicle_features.parquet` pelo VIN. 404 se
-o VIN não estiver na lista de leads (não tem score pra basear a ação).
+`domain.message_templates.montar_mensagem`, usando `diasSemServico` já presente em
+`leads.csv`. 404 se o VIN não estiver na lista de leads (não tem score pra basear a
+ação).
+
+---
+
+GET /api/leads/distribuicao-score — schema de resposta:
+
+    [
+      {"faixaInicio": 0.0, "faixaFim": 10.0, "quantidade": 15667},
+      {"faixaInicio": 10.0, "faixaFim": 20.0, "quantidade": 892},
+      ...
+      {"faixaInicio": 90.0, "faixaFim": 100.0, "quantidade": 97490}
+    ]
+
+Sem query params — sempre a base inteira de `leads.csv` (~175 mil VINs), não o top 50
+de `/leads`. Existe porque o top 50 não mostra a forma real da distribuição do score
+(ver `application.leads_metrics.compute_score_distribution`: ela é fortemente
+bimodal — a maior parte da frota está perto de 0% ou perto de 100%, quase nada no
+meio, consequência direta de como o rótulo/score foi construído).
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from src.application.leads_metrics import compute_score_distribution
 from src.domain.action_rules import Acao, recomendar_acao
 from src.domain.message_templates import montar_mensagem
 from src.infrastructure.leads_repository import load_leads_data
-from src.infrastructure.vehicle_features_repository import load_vehicle_features
 
 router = APIRouter()
 
 LIMIT_PADRAO = 50
+TAMANHO_PAGINA_MAXIMO = 500
 
 
 class Lead(BaseModel):
@@ -64,6 +99,14 @@ class Lead(BaseModel):
     score: float
     motivo: str
     modelo: str
+    diasSemServico: float
+
+
+class LeadsPagina(BaseModel):
+    leads: list[Lead]
+    total: int
+    pagina: int
+    tamanhoPagina: int
 
 
 class AcaoRecomendada(BaseModel):
@@ -71,18 +114,51 @@ class AcaoRecomendada(BaseModel):
     mensagem: str
 
 
-@router.get("/leads", response_model=list[Lead])
+class FaixaScore(BaseModel):
+    faixaInicio: float
+    faixaFim: float
+    quantidade: int
+
+
+@router.get("/leads", response_model=LeadsPagina)
 def get_leads(
     concessionaria: str | None = Query(None, description="dealerCode; ausente traz a fila da rede toda"),
-) -> list[Lead]:
+    scoreMinimo: float | None = Query(None, ge=0.0, le=1.0, description="só leads com score >= esse piso"),
+    scoreMaximo: float | None = Query(None, ge=0.0, le=1.0, description="só leads com score < esse teto"),
+    pagina: int = Query(1, ge=1),
+    tamanhoPagina: int = Query(LIMIT_PADRAO, ge=1, le=TAMANHO_PAGINA_MAXIMO),
+) -> LeadsPagina:
     leads = load_leads_data()
 
     if concessionaria is not None:
         leads = leads[leads["dealerCode"] == concessionaria]
 
-    leads = leads.sort_values("score", ascending=False).head(LIMIT_PADRAO)
+    if scoreMinimo is not None:
+        leads = leads[leads["score"] >= scoreMinimo]
 
-    return [Lead(**linha) for linha in leads.to_dict(orient="records")]
+    if scoreMaximo is not None:
+        leads = leads[leads["score"] < scoreMaximo]
+
+    leads = leads.sort_values(["score", "diasSemServico"], ascending=[False, False])
+    total = len(leads)
+
+    inicio = (pagina - 1) * tamanhoPagina
+    pagina_recortada = leads.iloc[inicio : inicio + tamanhoPagina]
+
+    return LeadsPagina(
+        leads=[Lead(**linha) for linha in pagina_recortada.to_dict(orient="records")],
+        total=total,
+        pagina=pagina,
+        tamanhoPagina=tamanhoPagina,
+    )
+
+
+@router.get("/leads/distribuicao-score", response_model=list[FaixaScore])
+def get_distribuicao_score() -> list[FaixaScore]:
+    leads = load_leads_data()
+    faixas = compute_score_distribution(leads)
+
+    return [FaixaScore(**faixa) for faixa in faixas]
 
 
 @router.get("/leads/{vin}/acao", response_model=AcaoRecomendada)
@@ -95,12 +171,7 @@ def get_acao_recomendada(vin: str) -> AcaoRecomendada:
 
     score = float(linha["score"].iloc[0])
     modelo = str(linha["modelo"].iloc[0])
-
-    features = load_vehicle_features()
-    linha_features = features.loc[features["VIN_Hash"] == vin]
-    dias_sem_servico = (
-        float(linha_features["dias_desde_ultimo_servico"].iloc[0]) if not linha_features.empty else 0.0
-    )
+    dias_sem_servico = float(linha["diasSemServico"].iloc[0])
 
     acao = recomendar_acao(score)
     mensagem = montar_mensagem(acao, modelo=modelo, dias_sem_servico=dias_sem_servico)

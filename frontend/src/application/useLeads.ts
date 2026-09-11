@@ -3,14 +3,21 @@ import { buscarLeads } from "../infrastructure/dataSource";
 import { useApiResource, type EstadoRequisicao } from "./useApiResource";
 
 /**
- * Lista de leads priorizada (top 50), opcionalmente restrita a uma
- * concessionária. Sem filtro, devolve a fila consolidada da rede.
+ * Página de leads priorizada, opcionalmente restrita a uma concessionária e/ou
+ * a um piso de score. Sem filtro, devolve a primeira página da fila consolidada
+ * da rede.
  *
  * Os leads já chegam ordenados por score decrescente da fonte de dados;
- * a ordenação da tabela na tela é responsabilidade do componente.
+ * a ordenação dentro da página é responsabilidade do componente.
  */
 export function useLeads(filtros: LeadsFiltros = {}): EstadoRequisicao<LeadsResponse> {
-  const chave = JSON.stringify([filtros.concessionaria ?? null]);
+  const chave = JSON.stringify([
+    filtros.concessionaria ?? null,
+    filtros.scoreMinimo ?? null,
+    filtros.scoreMaximo ?? null,
+    filtros.pagina ?? null,
+    filtros.tamanhoPagina ?? null
+  ]);
 
   return useApiResource<LeadsResponse>(() => buscarLeads(filtros), chave);
 }

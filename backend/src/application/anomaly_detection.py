@@ -121,6 +121,9 @@ def detect_dealer_share_drops(
                 f"Queda de {queda_pct:.0f}% no VIN Share nos últimos {janela} meses "
                 f"({base:.1f}% para {atual:.1f}%)."
             ),
+            "resumo": f"Queda de {queda_pct:.0f}% no VIN Share nos últimos {janela} meses",
+            "valorReferencia": round(base, 1),
+            "valorAtual": round(atual, 1),
         })
 
     resultado.sort(key=lambda item: item["severidade"], reverse=True)
@@ -181,6 +184,12 @@ def detect_model_gaps(
                 f"{valor_modelo:.1f}% de VIN Share, {gap_pontos:.1f} pontos abaixo da média da "
                 f"rede ({media_rede:.1f}%). Frota de {int(frota_por_modelo.get(modelo, 0)):,} veículos."
             ),
+            "resumo": (
+                f"VIN Share {gap_pontos:.1f} pontos abaixo da média da rede "
+                f"(frota de {int(frota_por_modelo.get(modelo, 0)):,} veículos)"
+            ),
+            "valorReferencia": round(media_rede, 1),
+            "valorAtual": round(valor_modelo, 1),
         })
 
     resultado.sort(key=lambda item: item["severidade"], reverse=True)
@@ -242,6 +251,12 @@ def detect_mainsource_spikes(
                 f"Aumento de {aumento_pontos:.1f} pontos na proporção de serviços fora do "
                 f"agendamento oficial ({base:.1f}% para {atual:.1f}% das ordens)."
             ),
+            "resumo": (
+                f"Aumento de {aumento_pontos:.1f} pontos na proporção de serviços fora do "
+                "agendamento oficial"
+            ),
+            "valorReferencia": round(base, 1),
+            "valorAtual": round(atual, 1),
         })
 
     resultado.sort(key=lambda item: item["severidade"], reverse=True)

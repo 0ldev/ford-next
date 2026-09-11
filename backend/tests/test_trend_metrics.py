@@ -1,7 +1,12 @@
 import pandas as pd
 import pytest
 
-from src.application.trend_metrics import compute_monthly_share, compute_trend, listar_competencias
+from src.application.trend_metrics import (
+    compute_monthly_share,
+    compute_trend,
+    compute_trend_concessionaria,
+    listar_competencias,
+)
 
 
 def _historico() -> pd.DataFrame:
@@ -81,3 +86,63 @@ def test_compute_monthly_share_dataframe_vazio_nao_quebra() -> None:
     resultado = compute_monthly_share(vazio, group_col="ModelName")
 
     assert resultado == []
+
+
+def _historico_com_dealer_pequeno() -> pd.DataFrame:
+    # dealer 300: 1 unico VIN elegivel na vida toda -> candidato a ruido de amostra
+    # pequena (100% ou 0% ao sabor do mes, nunca nada no meio).
+    extra = pd.DataFrame([
+        {"VIN_Hash": "v4", "ModelName": "KA", "DealerCode": 300, "ServiceDate": pd.Timestamp("2024-01-01")},
+    ])
+    return pd.concat([_historico(), extra], ignore_index=True)
+
+
+def test_compute_monthly_share_min_elegiveis_filtra_grupos_pequenos() -> None:
+    sem_piso = compute_monthly_share(_historico_com_dealer_pequeno(), group_col="DealerCode")
+    com_piso = compute_monthly_share(_historico_com_dealer_pequeno(), group_col="DealerCode", min_elegiveis=2)
+
+    assert 300 in {p["DealerCode"] for p in sem_piso}
+    assert 300 not in {p["DealerCode"] for p in com_piso}
+    assert {100, 200} <= {p["DealerCode"] for p in com_piso}
+
+
+def test_compute_monthly_share_min_elegiveis_nao_afeta_grupos_pedidos_explicitamente() -> None:
+    # o piso so' filtra a auto-descoberta; um grupo pedido explicitamente sempre entra.
+    resultado = compute_monthly_share(
+        _historico_com_dealer_pequeno(), group_col="DealerCode", grupos=[300], min_elegiveis=2
+    )
+
+    assert {p["DealerCode"] for p in resultado} == {300}
+
+
+def test_compute_trend_concessionaria_agrupa_por_dealer_com_schema_do_front() -> None:
+    resultado = compute_trend_concessionaria(
+        _historico(), concessionarias=["100"], periodo_inicio="2024-01", periodo_fim="2024-02"
+    )
+
+    assert resultado == [
+        {"data": "2024-01", "valor": 100.0, "categoria": "100"},  # v1 e v2, ambos com servico em jan
+        {"data": "2024-02", "valor": 0.0, "categoria": "100"},  # ninguem voltou ao dealer 100 em fev
+    ]
+
+
+def test_compute_trend_concessionaria_sem_filtro_retorna_todos_os_dealers() -> None:
+    resultado = compute_trend_concessionaria(_historico(), periodo_inicio="2024-01", periodo_fim="2024-01")
+    categorias = {p["categoria"] for p in resultado}
+
+    assert categorias == {"100", "200"}
+
+
+def test_compute_trend_concessionaria_codigo_invalido_levanta_value_error() -> None:
+    with pytest.raises(ValueError):
+        compute_trend_concessionaria(_historico(), concessionarias=["nao-e-um-numero"])
+
+
+def test_compute_trend_concessionaria_min_veiculos_filtra_dealers_pequenos() -> None:
+    resultado = compute_trend_concessionaria(
+        _historico_com_dealer_pequeno(), min_veiculos=2, periodo_inicio="2024-01", periodo_fim="2024-01"
+    )
+    categorias = {p["categoria"] for p in resultado}
+
+    assert categorias == {"100", "200"}
+    assert "300" not in categorias

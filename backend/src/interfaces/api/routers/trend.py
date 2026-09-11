@@ -23,6 +23,17 @@ Query params (mesmos nomes de `frontend/src/domain/types.ts::TrendFiltros`):
 definição exata (elegível = todo VIN que já teve serviço daquele modelo, em toda a
 história; "com serviço" = teve serviço naquele modelo especificamente naquele mês).
 Meses sem serviço aparecem com `valor=0.0`, não ficam ausentes.
+
+---
+
+GET /api/trend/concessionarias — mesmo schema e mesmas regras de período acima, só
+que agrupado por `DealerCode` em vez de `ModelName` (`categoria` é o dealerCode,
+texto). Query param `concessionaria` (repetível) no lugar de `modelo`; ausente = todas
+as concessionárias do histórico com pelo menos `minVeiculos` VINs elegíveis (default
+0 = sem piso) — o front-end é quem recorta pro top N num ranking (ver
+`VinShareConcessionariaChart`). Sem esse piso, dealers de 1-2 VINs entopem o topo do
+ranking em 100% (ou o fundo em 0%) por ruído estatístico, não por volume real — ver
+`application.trend_metrics.compute_monthly_share` (`min_elegiveis`).
 """
 from __future__ import annotations
 
@@ -31,7 +42,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from src.application.trend_metrics import compute_trend
+from src.application.trend_metrics import compute_trend, compute_trend_concessionaria
 from src.infrastructure.vin_share_repository import load_vin_share_data
 
 router = APIRouter()
@@ -59,6 +70,31 @@ def get_trend(
             modelos=modelo or None,
             periodo_inicio=periodoInicio,
             periodo_fim=periodoFim,
+        )
+    except ValueError as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
+
+    return [TrendPoint(**ponto) for ponto in pontos]
+
+
+@router.get("/trend/concessionarias", response_model=list[TrendPoint])
+def get_trend_concessionarias(
+    concessionaria: Annotated[list[str] | None, Query(description="dealerCode; repetível, ausente = todas")] = None,
+    periodoInicio: Annotated[str | None, Query(pattern=_PADRAO_COMPETENCIA, description='Competência "YYYY-MM"')] = None,
+    periodoFim: Annotated[str | None, Query(pattern=_PADRAO_COMPETENCIA, description='Competência "YYYY-MM"')] = None,
+    minVeiculos: Annotated[
+        int, Query(ge=0, description="Piso de VINs elegíveis; ignorado se `concessionaria` for informado")
+    ] = 0,
+) -> list[TrendPoint]:
+    df = load_vin_share_data()
+
+    try:
+        pontos = compute_trend_concessionaria(
+            df,
+            concessionarias=concessionaria or None,
+            periodo_inicio=periodoInicio,
+            periodo_fim=periodoFim,
+            min_veiculos=minVeiculos,
         )
     except ValueError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro

@@ -60,6 +60,7 @@ def _leads_df() -> pd.DataFrame:
         "score_risco": [0.9, 0.3],
         "motivo_risco": ["180 dias sem serviço, 40% acima do intervalo esperado do modelo", "dentro do prazo"],
         "ModelName": ["RANGER", "KA"],
+        "dias_desde_ultimo_servico": [180.0, 30.0],
         "coluna_extra_que_nao_faz_parte_do_schema": ["x", "y"],
     })
 
@@ -79,6 +80,7 @@ def test_export_renomeia_as_colunas_conforme_o_schema(tmp_path) -> None:
     assert resultado["dealerCode"].tolist() == [10, 20]
     assert resultado["score"].tolist() == [0.9, 0.3]
     assert resultado["modelo"].tolist() == ["RANGER", "KA"]
+    assert resultado["diasSemServico"].tolist() == [180.0, 30.0]
 
 
 def test_export_nao_inclui_colunas_fora_do_schema(tmp_path) -> None:

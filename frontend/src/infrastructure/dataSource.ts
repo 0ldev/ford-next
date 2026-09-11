@@ -13,6 +13,9 @@ import type {
   Catalogo,
   LeadsFiltros,
   LeadsResponse,
+  ScoreDistributionResponse,
+  TrendConcessionariaFiltros,
+  TrendConcessionariaResponse,
   TrendFiltros,
   TrendResponse,
   VinShareFiltros,
@@ -25,7 +28,9 @@ import {
   mockAnomalies,
   mockCatalogo,
   mockLeads,
+  mockScoreDistribution,
   mockTrend,
+  mockTrendConcessionarias,
   mockVinShare
 } from "./mockData";
 
@@ -64,4 +69,16 @@ export function buscarAcaoRecomendada(vin: string): Promise<AcaoRecomendada> {
 export function buscarCatalogo(): Promise<Catalogo> {
   if (USE_MOCK) return comLatencia(mockCatalogo());
   return apiGet<Catalogo>("/catalogo");
+}
+
+export function buscarTrendConcessionarias(
+  filtros: TrendConcessionariaFiltros = {}
+): Promise<TrendConcessionariaResponse> {
+  if (USE_MOCK) return comLatencia(mockTrendConcessionarias(filtros));
+  return apiGet<TrendConcessionariaResponse>("/trend/concessionarias", { ...filtros });
+}
+
+export function buscarDistribuicaoScore(): Promise<ScoreDistributionResponse> {
+  if (USE_MOCK) return comLatencia(mockScoreDistribution());
+  return apiGet<ScoreDistributionResponse>("/leads/distribuicao-score");
 }

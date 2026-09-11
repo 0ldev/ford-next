@@ -3,9 +3,15 @@ import EstadoErro from "./EstadoErro";
 export interface KpiCardProps {
   /** Rótulo do indicador, ex.: "VIN Share estimado". */
   label: string;
-  /** Valor do indicador; `null`/`undefined` enquanto não há dado. */
+  /** Valor numérico do indicador; `null`/`undefined` enquanto não há dado. */
   valor?: number | null;
-  /** Sufixo da unidade exibido ao lado do número. */
+  /**
+   * Valor textual do indicador (ex.: um rótulo de ação), alternativa a `valor`
+   * para cards que não são uma métrica numérica. Ignorado se `valor` também
+   * for informado.
+   */
+  valorTexto?: string | null;
+  /** Sufixo da unidade exibido ao lado do número (ignorado com `valorTexto`). */
   unidade?: string;
   /** Casas decimais na formatação pt-BR. */
   casasDecimais?: number;
@@ -38,6 +44,7 @@ const formatador = new Intl.NumberFormat("pt-BR");
 export default function KpiCard({
   label,
   valor,
+  valorTexto,
   unidade = "%",
   casasDecimais = 1,
   contexto,
@@ -47,6 +54,8 @@ export default function KpiCard({
   onTentarNovamente
 }: KpiCardProps) {
   const temValor = typeof valor === "number" && Number.isFinite(valor);
+  const temValorTexto = !temValor && typeof valorTexto === "string" && valorTexto !== "";
+  const temConteudo = temValor || temValorTexto;
 
   /*
    * Sozinho, "34,7%" não diz se é bom ou ruim. A diferença em pontos
@@ -68,9 +77,11 @@ export default function KpiCard({
 
       {erro ? (
         <EstadoErro mensagem={erro} onTentarNovamente={onTentarNovamente} />
-      ) : loading || !temValor ? (
+      ) : loading || !temConteudo ? (
         // Barra cinza no lugar do número: ocupa o mesmo espaço do valor final.
         <div className="kpi-skeleton" role="status" aria-label={`Carregando ${label}`} />
+      ) : temValorTexto ? (
+        <p className="kpi-valor kpi-valor-texto">{valorTexto}</p>
       ) : (
         <p className="kpi-valor">
           {valorFormatado}

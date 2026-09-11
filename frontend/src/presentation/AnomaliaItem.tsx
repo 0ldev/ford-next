@@ -14,6 +14,11 @@ const ROTULO_NIVEL: Record<NivelRisco, string> = {
   baixo: "Severidade baixa"
 };
 
+/** "34.7" vira "34,7%" — mesma formatação pt-BR do resto do dashboard. */
+function formatarPercentual(valor: number): string {
+  return `${valor.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
+}
+
 export interface AtalhoDeFiltro {
   filtro: Partial<VinShareFiltros>;
   rotulo: string;
@@ -61,6 +66,14 @@ export default function AnomaliaItem({ anomalia, onFiltrar }: AnomaliaItemProps)
   const percentual = Math.round(anomalia.severidade * 100);
   const atalho = atalhoDaAnomalia(anomalia);
 
+  /*
+   * Seta de tendência derivada dos próprios valores (não fixa em "queda"):
+   * gap_modelo e queda_dealer caem (atual < referência), mas pico_mainsource
+   * é um aumento (atual > referência) — a direção real evita afirmar "queda"
+   * onde na verdade houve alta.
+   */
+  const emAlta = anomalia.valorAtual > anomalia.valorReferencia;
+
   return (
     <li className={`anomalia anomalia-${nivel}`}>
       <div className="anomalia-cabecalho">
@@ -70,7 +83,22 @@ export default function AnomaliaItem({ anomalia, onFiltrar }: AnomaliaItemProps)
         </span>
       </div>
 
-      <p className="anomalia-descricao">{anomalia.descricao}</p>
+      <p className="anomalia-resumo">
+        <span className="anomalia-seta-tendencia" aria-hidden="true">
+          {emAlta ? "▲" : "▼"}
+        </span>{" "}
+        {anomalia.resumo}
+      </p>
+
+      <p className="anomalia-comparacao">
+        <span className="anomalia-comparacao-referencia">
+          {formatarPercentual(anomalia.valorReferencia)}
+        </span>
+        <span className="anomalia-comparacao-seta" aria-hidden="true">
+          →
+        </span>
+        <span className="anomalia-comparacao-atual">{formatarPercentual(anomalia.valorAtual)}</span>
+      </p>
 
       <div
         className="anomalia-barra"

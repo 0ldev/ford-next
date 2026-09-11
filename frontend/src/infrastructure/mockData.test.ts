@@ -53,11 +53,31 @@ describe("mockVinShare — variação por período", () => {
 
 describe("mockLeads", () => {
   it("cobre as três faixas de risco com VINs únicos", () => {
-    const leads = mockLeads();
+    const { leads } = mockLeads();
 
     expect(leads.filter((lead) => lead.score > 0.7).length).toBeGreaterThan(0);
     expect(leads.filter((lead) => lead.score >= 0.3 && lead.score <= 0.7).length).toBeGreaterThan(0);
     expect(leads.filter((lead) => lead.score < 0.3).length).toBeGreaterThan(0);
     expect(new Set(leads.map((lead) => lead.vin)).size).toBe(leads.length);
+  });
+
+  it("pagina o resultado e reporta o total do recorte inteiro", () => {
+    const primeiraPagina = mockLeads({ tamanhoPagina: 10 });
+    const segundaPagina = mockLeads({ tamanhoPagina: 10, pagina: 2 });
+
+    expect(primeiraPagina.leads).toHaveLength(10);
+    expect(primeiraPagina.total).toBe(64);
+    expect(primeiraPagina.pagina).toBe(1);
+    expect(segundaPagina.leads).toHaveLength(10);
+    expect(segundaPagina.pagina).toBe(2);
+    expect(segundaPagina.leads[0].vin).not.toBe(primeiraPagina.leads[0].vin);
+  });
+
+  it("scoreMinimo filtra o recorte antes de paginar", () => {
+    const { leads, total } = mockLeads({ scoreMinimo: 0.7 });
+
+    expect(leads.every((lead) => lead.score >= 0.7)).toBe(true);
+    expect(total).toBeLessThan(64);
+    expect(total).toBeGreaterThan(0);
   });
 });

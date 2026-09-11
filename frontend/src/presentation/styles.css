@@ -267,10 +267,16 @@ body {
 
 /* KPI --------------------------------------------------------------- */
 
-/* Grade preparada para receber mais indicadores ao lado do VIN Share. */
+/*
+ * 3 colunas de largura igual, sempre numa linha só — `minmax(300px, 480px)`
+ * com `auto-fit` quebrava linha assim que 3 cards não cabiam lado a lado
+ * (ex.: 1440px de tela). `minmax(0, 1fr)` deixa a coluna encolher até 0 em
+ * vez de forçar a quebra; quem cede espaço é o conteúdo do card (o rótulo e
+ * o contexto já quebram linha normalmente), não a grade.
+ */
 .indicadores {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 480px));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--espaco-4);
 }
 
@@ -304,6 +310,13 @@ body {
   letter-spacing: -0.02em;
   color: var(--azul-900);
   font-variant-numeric: tabular-nums;
+}
+
+/* Cards de indicador com um rótulo (ex.: "Contato ativo") em vez de um
+   número — o tamanho gigante do KPI numérico estouraria uma frase. */
+.kpi-valor-texto {
+  font-size: var(--texto-xl);
+  line-height: 1.2;
 }
 
 .kpi-unidade {
@@ -525,10 +538,56 @@ body {
   color: var(--cor-texto-suave);
 }
 
-.anomalia-descricao {
-  margin: var(--espaco-2) 0 var(--espaco-4);
+.anomalia-resumo {
+  margin: var(--espaco-2) 0 0;
   font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
   color: var(--cor-texto);
+}
+
+.anomalia-seta-tendencia {
+  color: var(--neutro-400);
+}
+
+.anomalia-alto .anomalia-seta-tendencia {
+  color: var(--risco-alto);
+}
+
+.anomalia-medio .anomalia-seta-tendencia {
+  color: var(--risco-medio);
+}
+
+/* "referência -> atual": o par de valores que a frase do resumo descreve,
+   como uma linha própria em vez de embutido no meio do texto corrido. */
+.anomalia-comparacao {
+  display: flex;
+  align-items: baseline;
+  gap: var(--espaco-2);
+  margin: var(--espaco-1) 0 var(--espaco-4);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-forte);
+  font-variant-numeric: tabular-nums;
+}
+
+.anomalia-comparacao-referencia {
+  color: var(--cor-texto-suave);
+}
+
+.anomalia-comparacao-seta {
+  font-weight: var(--peso-medio);
+  color: var(--neutro-400);
+}
+
+.anomalia-comparacao-atual {
+  color: var(--cor-texto);
+}
+
+.anomalia-alto .anomalia-comparacao-atual {
+  color: var(--risco-alto);
+}
+
+.anomalia-medio .anomalia-comparacao-atual {
+  color: var(--risco-medio);
 }
 
 .anomalia-barra {
@@ -576,6 +635,43 @@ body {
   margin: 0 0 var(--espaco-2);
   font-size: var(--texto-sm);
   color: var(--cor-texto-suave);
+}
+
+.leads-paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--espaco-4);
+}
+
+.leads-paginacao-texto {
+  font-size: var(--texto-sm);
+  color: var(--cor-texto-suave);
+}
+
+.botao-paginacao {
+  height: var(--altura-controle);
+  padding: 0 var(--espaco-4);
+  border: 1px solid var(--cor-marca);
+  border-radius: var(--raio-sm);
+  background: transparent;
+  font: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--cor-marca);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.botao-paginacao:hover:not(:disabled) {
+  background: var(--cor-marca);
+  color: var(--branco);
+}
+
+.botao-paginacao:disabled {
+  border-color: var(--cor-borda);
+  color: var(--neutro-400);
+  cursor: not-allowed;
 }
 
 /*

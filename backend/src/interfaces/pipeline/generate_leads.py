@@ -25,6 +25,7 @@ LEADS_SCHEMA: dict[str, str] = {
     "score_risco": "score",
     "motivo_risco": "motivo",
     "ModelName": "modelo",
+    "dias_desde_ultimo_servico": "diasSemServico",
 }
 
 

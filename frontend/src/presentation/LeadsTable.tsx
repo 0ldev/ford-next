@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAcoesRecomendadas } from "../application/useAcoesRecomendadas";
 import { useLeads } from "../application/useLeads";
+import { encontrarLeadPrioritario } from "../domain/leads";
 import { LIMIAR_ALTO, LIMIAR_MEDIO, nivelDeRisco } from "../domain/severidade";
 import type { Lead } from "../domain/types";
 import { rotuloDaConcessionaria } from "../infrastructure/mockData";
@@ -23,8 +24,23 @@ const PISO_FAIXA: Record<FaixaScore, number> = {
   alto: LIMIAR_ALTO
 };
 
+/*
+ * "Alto" é o topo aberto da distribuição (sem teto — >= 70% já é o fim da escala).
+ * "Médio" precisa de teto: sem ele, um piso sozinho (score >= 30%) ainda inclui os
+ * ~97 mil VINs empatados em 100%, e a tela mostraria "risco médio" com o mesmo
+ * badge vermelho de "alto" — o filtro parecia não fazer nada. O teto isola a
+ * banda de verdade (30% a 69%), a mesma faixa que os badges de severidade (ver
+ * `nivelDeRisco`) já pintam de âmbar.
+ */
+const TETO_FAIXA: Partial<Record<FaixaScore, number>> = {
+  medio: LIMIAR_ALTO
+};
+
 const OPCOES_FAIXA: DropdownOption[] = [
-  { value: "medio", label: `Risco médio ou maior (≥ ${Math.round(LIMIAR_MEDIO * 100)}%)` },
+  {
+    value: "medio",
+    label: `Risco médio (${Math.round(LIMIAR_MEDIO * 100)}% a ${Math.round(LIMIAR_ALTO * 100) - 1}%)`
+  },
   { value: "alto", label: `Risco alto (≥ ${Math.round(LIMIAR_ALTO * 100)}%)` }
 ];
 
@@ -49,40 +65,50 @@ function vinParaLeitura(vin: string): string {
 /**
  * Fila de leads priorizada por risco de evasão.
  *
- * Ordenação e filtro são client-side, sobre os dados já buscados: o gestor
- * reorganiza a fila sem esperar a rede. A ação recomendada de cada veículo
- * é buscada só quando a linha é expandida.
+ * A "Faixa de risco" vira `scoreMinimo` na requisição — filtrar no servidor
+ * (não só na página já buscada) é o que faz a fila trazer leads de fato fora
+ * do topo empatado em 100%, em vez de só reordenar a mesma fatia. A ordenação
+ * asc/desc, essa sim, é client-side dentro da página atual: o gestor inverte
+ * a leitura sem esperar a rede. A ação recomendada de cada veículo é buscada
+ * só quando a linha é expandida.
  */
 export default function LeadsTable({ concessionaria }: LeadsTableProps) {
-  const { data, loading, error, recarregar } = useLeads({ concessionaria });
-  const { acoes, carregar, recarregar: recarregarAcao } = useAcoesRecomendadas();
-
   const [ordem, setOrdem] = useState<Ordem>("desc");
   const [faixa, setFaixa] = useState<FaixaScore | undefined>(undefined);
+  const [pagina, setPagina] = useState(1);
   const [expandidos, setExpandidos] = useState<string[]>([]);
 
-  const leads = useMemo(() => {
-    const lista = data ?? [];
-    const piso = faixa ? PISO_FAIXA[faixa] : 0;
+  const piso = faixa ? PISO_FAIXA[faixa] : undefined;
+  const teto = faixa ? TETO_FAIXA[faixa] : undefined;
+  const { data, loading, error, recarregar } = useLeads({
+    concessionaria,
+    scoreMinimo: piso,
+    scoreMaximo: teto,
+    pagina
+  });
+  const { acoes, carregar, recarregar: recarregarAcao } = useAcoesRecomendadas();
 
-    return lista
-      .filter((lead) => lead.score >= piso)
-      .sort((a, b) => (ordem === "desc" ? b.score - a.score : a.score - b.score));
-  }, [data, faixa, ordem]);
+  // Trocar de concessionária ou de faixa muda o recorte inteiro — a página
+  // antiga pode nem existir mais nele, então volta pro início.
+  useEffect(() => {
+    setPagina(1);
+  }, [concessionaria, faixa]);
+
+  const total = data?.total ?? 0;
+  const tamanhoPagina = data?.tamanhoPagina ?? 50;
+  const totalPaginas = Math.max(1, Math.ceil(total / tamanhoPagina));
+
+  const leads = useMemo(() => {
+    const lista = data?.leads ?? [];
+    return [...lista].sort((a, b) => (ordem === "desc" ? b.score - a.score : a.score - b.score));
+  }, [data, ordem]);
 
   /*
    * O card de destaque mostra sempre o caso mais urgente do recorte, então
    * olha o maior score e não o primeiro da lista — inverter a ordenação da
    * tabela não deve trocar qual é a ação prioritária.
    */
-  const leadPrioritario = useMemo(
-    () =>
-      leads.reduce<Lead | undefined>(
-        (maior, lead) => (!maior || lead.score > maior.score ? lead : maior),
-        undefined
-      ),
-    [leads]
-  );
+  const leadPrioritario = useMemo(() => encontrarLeadPrioritario(leads), [leads]);
 
   const alternarLinha = (vin: string) => {
     setExpandidos((atual) =>
@@ -129,13 +155,12 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
           placeholder="Todos os scores"
         />
         <p className="leads-contagem">
-          {leads.length} {leads.length === 1 ? "lead" : "leads"}
-          {faixa ? ` de ${data?.length ?? 0} na fila` : ""}
+          {total} {total === 1 ? "lead" : "leads"}{faixa ? " nesta faixa" : " na fila"}
         </p>
       </div>
 
       {leads.length === 0 ? (
-        <p className="lista-vazia">Nenhum lead nesta faixa de risco.</p>
+        <p className="lista-vazia">Nenhum lead encontrado para este filtro.</p>
       ) : (
         <div className="tabela-rolagem">
           <table className="tabela">
@@ -180,6 +205,30 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {totalPaginas > 1 && (
+        <div className="leads-paginacao">
+          <button
+            type="button"
+            className="botao-paginacao"
+            onClick={() => setPagina((atual) => atual - 1)}
+            disabled={pagina <= 1}
+          >
+            ← Anterior
+          </button>
+          <span className="leads-paginacao-texto">
+            Página {pagina} de {totalPaginas}
+          </span>
+          <button
+            type="button"
+            className="botao-paginacao"
+            onClick={() => setPagina((atual) => atual + 1)}
+            disabled={pagina >= totalPaginas}
+          >
+            Próxima →
+          </button>
         </div>
       )}
     </div>

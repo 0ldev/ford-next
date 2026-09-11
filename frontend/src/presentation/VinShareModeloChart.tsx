@@ -10,7 +10,7 @@ import {
   YAxis
 } from "recharts";
 import { useTrendData } from "../application/useTrendData";
-import type { TrendResponse } from "../domain/types";
+import { competenciaDeReferencia, formatarCompetenciaLonga } from "../domain/competencia";
 import EstadoErro from "./EstadoErro";
 
 export interface VinShareModeloChartProps {
@@ -39,68 +39,18 @@ const ALTURA_MINIMA = 160;
 const ALTURA_POR_BARRA = 28;
 
 /**
- * Última competência "utilizável" (não claramente truncada) presente nos pontos.
- *
- * O snapshot de um mês em andamento no momento da extração dos dados (ex.: maio de
- * 2026 tem só ~350 ordens de serviço contra ~11-12 mil num mês cheio) faz todo modelo
- * parecer perto de zero — não porque a rede piorou, mas porque o mês não terminou.
- * Mesma heurística do backend (`anomaly_detection._competencias_completas`): soma o
- * `valor` de todos os modelos por mês como proxy de volume total e descarta o último
- * mês se ele cair para menos da metade da média dos 3 anteriores.
- */
-function competenciaDeReferencia(pontos: TrendResponse): string | undefined {
-  const totalPorMes = new Map<string, number>();
-  for (const ponto of pontos) {
-    totalPorMes.set(ponto.data, (totalPorMes.get(ponto.data) ?? 0) + ponto.valor);
-  }
-
-  const meses = [...totalPorMes.keys()].sort();
-  if (meses.length === 0) return undefined;
-
-  const ultimo = meses[meses.length - 1];
-  if (meses.length >= 4) {
-    const totalUltimo = totalPorMes.get(ultimo) ?? 0;
-    const anteriores = meses.slice(-4, -1).map((mes) => totalPorMes.get(mes) ?? 0);
-    const mediaAnteriores = anteriores.reduce((soma, valor) => soma + valor, 0) / anteriores.length;
-
-    if (mediaAnteriores > 0 && totalUltimo < mediaAnteriores / 2) {
-      return meses[meses.length - 2];
-    }
-  }
-
-  return ultimo;
-}
-
-const MESES_LONGOS = [
-  "janeiro",
-  "fevereiro",
-  "março",
-  "abril",
-  "maio",
-  "junho",
-  "julho",
-  "agosto",
-  "setembro",
-  "outubro",
-  "novembro",
-  "dezembro"
-];
-
-/** "2026-04" vira "abril de 2026". */
-function formatarCompetenciaLonga(competencia: string): string {
-  const [ano, mes] = competencia.split("-");
-  const indice = Number(mes) - 1;
-  if (!ano || Number.isNaN(indice) || !MESES_LONGOS[indice]) return competencia;
-  return `${MESES_LONGOS[indice]} de ${ano}`;
-}
-
-/**
  * Ranking de VIN Share por modelo na competência mais recente disponível.
  *
  * Complementa o gráfico de tendência (evolução no tempo) com uma foto do
  * presente: quais modelos estão bem e quais estão atrás agora. Reaproveita o
  * mesmo GET /api/trend (sem filtro de modelo, então todos entram) — nenhuma
  * chamada nova ao backend além da que a tendência já faz.
+ *
+ * Modelos com `valor === 0` na competência de referência ficam de fora do
+ * ranking: para os de baixo volume (ex.: 7BC, com poucas dezenas de VINs na
+ * vida toda), 0% num único mês quase sempre significa "não tivemos nenhum
+ * serviço desse modelo nesse mês" (sem dado), não "o modelo caiu a zero" —
+ * mostrar a barra vazia sugeriria o segundo quando o real é o primeiro.
  */
 export default function VinShareModeloChart({ periodoInicio, periodoFim }: VinShareModeloChartProps) {
   const { data, loading, error, recarregar } = useTrendData({ periodoInicio, periodoFim });
@@ -110,7 +60,7 @@ export default function VinShareModeloChart({ periodoInicio, periodoFim }: VinSh
   const barras = useMemo<BarraModelo[]>(() => {
     if (!data || !competencia) return [];
     return data
-      .filter((ponto) => ponto.data === competencia)
+      .filter((ponto) => ponto.data === competencia && ponto.valor > 0)
       .map((ponto) => ({ modelo: ponto.categoria, valor: ponto.valor }))
       .sort((a, b) => b.valor - a.valor);
   }, [data, competencia]);

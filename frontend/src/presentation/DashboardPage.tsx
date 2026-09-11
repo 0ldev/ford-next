@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAnomaliesData } from "../application/useAnomaliesData";
 import { useCatalogo } from "../application/useCatalogo";
 import { useVinShareData } from "../application/useVinShareData";
 import type { VinShareFiltros } from "../domain/types";
+import AcaoPrioritariaKpiCard from "./AcaoPrioritariaKpiCard";
 import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
 import KpiCard, { formatarInteiro, type ComparacaoKpi } from "./KpiCard";
 import LeadsTable from "./LeadsTable";
 import ResumoFiltros from "./ResumoFiltros";
+import ScoreDistributionChart from "./ScoreDistributionChart";
 import TrendChart from "./TrendChart";
+import VinShareConcessionariaChart from "./VinShareConcessionariaChart";
 import VinShareModeloChart from "./VinShareModeloChart";
 
 /** Remove chaves com valor `undefined`/"" para o estado refletir só o que está de fato filtrado. */
@@ -76,6 +80,13 @@ export default function DashboardPage() {
     periodoInicio: filtros.periodoInicio,
     periodoFim: filtros.periodoFim
   });
+
+  const {
+    data: anomalias,
+    loading: carregandoAnomalias,
+    error: erroAnomalias,
+    recarregar: recarregarAnomalias
+  } = useAnomaliesData();
 
   const atualizarFiltros = useCallback((alteracao: Partial<VinShareFiltros>) => {
     setFiltros((atual) => limparVazios({ ...atual, ...alteracao }));
@@ -163,6 +174,18 @@ export default function DashboardPage() {
               erro={error ? error.message : null}
               onTentarNovamente={recarregar}
             />
+
+            <KpiCard
+              label="Anomalias detectadas"
+              valor={anomalias?.length}
+              unidade=""
+              casasDecimais={0}
+              loading={carregandoAnomalias}
+              erro={erroAnomalias ? erroAnomalias.message : null}
+              onTentarNovamente={recarregarAnomalias}
+            />
+
+            <AcaoPrioritariaKpiCard concessionaria={filtros.concessionaria} />
           </div>
         </section>
 
@@ -185,6 +208,20 @@ export default function DashboardPage() {
             periodoInicio={paraCompetencia(filtros.periodoInicio)}
             periodoFim={paraCompetencia(filtros.periodoFim)}
           />
+        </section>
+
+        <section className="secao" aria-labelledby="secao-ranking-concessionaria">
+          <h2 className="secao-titulo" id="secao-ranking-concessionaria">
+            VIN Share por concessionária
+          </h2>
+          <VinShareConcessionariaChart />
+        </section>
+
+        <section className="secao" aria-labelledby="secao-distribuicao-score">
+          <h2 className="secao-titulo" id="secao-distribuicao-score">
+            Distribuição de score de risco
+          </h2>
+          <ScoreDistributionChart />
         </section>
 
         <section className="secao" aria-labelledby="secao-anomalias">

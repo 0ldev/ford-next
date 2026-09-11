@@ -20,6 +20,9 @@ import type {
   Lead,
   LeadsFiltros,
   LeadsResponse,
+  ScoreDistributionResponse,
+  TrendConcessionariaFiltros,
+  TrendConcessionariaResponse,
   TrendFiltros,
   TrendResponse,
   VinShareFiltros,
@@ -303,6 +306,43 @@ export function mockTrend(filtros: TrendFiltros = {}): TrendResponse {
 }
 
 /* ------------------------------------------------------------------ */
+/* GET /api/trend/concessionarias                                      */
+/* ------------------------------------------------------------------ */
+
+/** VIN share médio (%) de uma concessionária — estável por dealerCode entre chamadas. */
+function shareBaseConcessionaria(dealerCode: string): number {
+  const random = criarRandom(hashTexto(`share-dealer-${dealerCode}`));
+  return 15 + random() * 45; // 15% a 60%, faixa plausivel de unidade pra unidade
+}
+
+export function mockTrendConcessionarias(
+  filtros: TrendConcessionariaFiltros = {}
+): TrendConcessionariaResponse {
+  const dealers =
+    filtros.concessionaria && filtros.concessionaria.length > 0
+      ? filtros.concessionaria
+      : CONCESSIONARIAS.map((item) => item.dealerCode);
+  const meses = listarMeses(
+    filtros.periodoInicio ?? PERIODO_PADRAO_INICIO,
+    filtros.periodoFim ?? PERIODO_PADRAO_FIM
+  );
+
+  const pontos: TrendConcessionariaResponse = [];
+  for (const dealerCode of dealers) {
+    const base = shareBaseConcessionaria(dealerCode);
+    const random = criarRandom(hashTexto(`trend-dealer-${dealerCode}`));
+
+    meses.forEach((mes) => {
+      const ruido = (random() - 0.5) * 6;
+      const valor = limitar(base + ruido, 2, 95);
+      pontos.push({ data: mes, valor: arredondar(valor), categoria: dealerCode });
+    });
+  }
+
+  return pontos;
+}
+
+/* ------------------------------------------------------------------ */
 /* GET /api/anomalies                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -313,42 +353,60 @@ export function mockAnomalies(): AnomaliesResponse {
       entidade: "Ford Bahia Motors — Salvador/BA",
       severidade: 0.91,
       descricao:
-        "Queda de 38% no VIN Share nos últimos 3 meses (41,2% para 25,5%). 1.184 veículos elegíveis sem retorno à rede."
+        "Queda de 38% no VIN Share nos últimos 3 meses (41,2% para 25,5%). 1.184 veículos elegíveis sem retorno à rede.",
+      resumo: "Queda de 38% no VIN Share nos últimos 3 meses",
+      valorReferencia: 41.2,
+      valorAtual: 25.5
     },
     {
       tipo: "gap_modelo",
       entidade: "KA",
       severidade: 0.84,
       descricao:
-        "26,9% de VIN Share, 7,8 pontos abaixo da média da rede. Frota de 38.622 veículos com idade média de 6,4 anos."
+        "26,9% de VIN Share, 7,8 pontos abaixo da média da rede. Frota de 38.622 veículos com idade média de 6,4 anos.",
+      resumo: "VIN Share 7,8 pontos abaixo da média da rede (frota de 38.622 veículos)",
+      valorReferencia: 34.7,
+      valorAtual: 26.9
     },
     {
       tipo: "pico_mainsource",
       entidade: "Ford Trioeste — Curitiba/PR",
       severidade: 0.72,
       descricao:
-        "Aumento de 61% em serviços registrados fora da rede oficial em 2026. Indício de migração para oficinas independentes."
+        "Aumento de 61% em serviços registrados fora da rede oficial em 2026. Indício de migração para oficinas independentes.",
+      resumo: "Aumento de 61% em serviços registrados fora da rede oficial",
+      valorReferencia: 18.5,
+      valorAtual: 29.8
     },
     {
       tipo: "queda_dealer",
       entidade: "Ford Vale Sul — São José dos Campos/SP",
       severidade: 0.58,
       descricao:
-        "Retenção pós-garantia caiu de 47% para 34% em 12 meses, concentrada em veículos de 4 a 7 anos."
+        "Retenção pós-garantia caiu de 47% para 34% em 12 meses, concentrada em veículos de 4 a 7 anos.",
+      resumo: "Retenção pós-garantia caiu no VIN Share em 12 meses",
+      valorReferencia: 47,
+      valorAtual: 34
     },
     {
       tipo: "gap_modelo",
       entidade: "ECOSPORT",
       severidade: 0.44,
       descricao:
-        "Intervalo médio entre revisões subiu de 11,2 para 15,8 meses desde 2024."
+        "Intervalo médio entre revisões subiu de 11,2 para 15,8 meses desde 2024.",
+      resumo: "VIN Share abaixo da média da rede desde 2024",
+      valorReferencia: 32.0,
+      valorAtual: 24.0
     },
     {
       tipo: "pico_mainsource",
       entidade: "RANGER",
       severidade: 0.29,
       descricao:
-        "Leve alta (9%) de serviços fora da rede em veículos acima de 8 anos, dentro do esperado para a faixa."
+        "Leve alta (9%) de serviços fora da rede em veículos acima de 8 anos, dentro do esperado para a faixa.",
+      resumo: "Leve alta de serviços fora da rede em veículos acima de 8 anos",
+      valorReferencia: 41.0,
+      valorAtual: 44.7
     }
   ];
 
@@ -412,25 +470,67 @@ function gerarLeads(): Lead[] {
       dealerCode: concessionaria.dealerCode,
       score: arredondar(score, 2),
       motivo: gerarMotivo(i, dias, excedente, modelo, idadeAnos),
-      modelo
+      modelo,
+      diasSemServico: dias
     });
   }
 
-  return leads.sort((a, b) => b.score - a.score);
+  // Mesmo desempate do backend real (issue de score empatado): score desc,
+  // diasSemServico desc — sem isso, um empate de score na mock reordenaria a
+  // cada geração e o desempate ficaria sem sentido de se testar na tela.
+  return leads.sort((a, b) => b.score - a.score || b.diasSemServico - a.diasSemServico);
 }
 
 const LEADS_MOCK = gerarLeads();
 
-/** Top 50 por concessionária, como combinado no contrato do endpoint. */
+/** Espelha a paginação real do backend: filtra por concessionária/score, depois pagina. */
 export function mockLeads(filtros: LeadsFiltros = {}): LeadsResponse {
   const filtro = filtros.concessionaria;
-  if (!filtro) return LEADS_MOCK.slice(0, 50);
 
-  const concessionaria = CONCESSIONARIAS.find(
-    (item) => item.dealerCode === filtro || item.nome === filtro
-  );
-  const dealerCode = concessionaria?.dealerCode ?? filtro;
-  return LEADS_MOCK.filter((lead) => lead.dealerCode === dealerCode).slice(0, 50);
+  let recorte = LEADS_MOCK;
+  if (filtro) {
+    const concessionaria = CONCESSIONARIAS.find(
+      (item) => item.dealerCode === filtro || item.nome === filtro
+    );
+    const dealerCode = concessionaria?.dealerCode ?? filtro;
+    recorte = recorte.filter((lead) => lead.dealerCode === dealerCode);
+  }
+  if (filtros.scoreMinimo !== undefined) {
+    recorte = recorte.filter((lead) => lead.score >= filtros.scoreMinimo!);
+  }
+  if (filtros.scoreMaximo !== undefined) {
+    recorte = recorte.filter((lead) => lead.score < filtros.scoreMaximo!);
+  }
+
+  const tamanhoPagina = filtros.tamanhoPagina ?? 50;
+  const pagina = filtros.pagina ?? 1;
+  const inicio = (pagina - 1) * tamanhoPagina;
+
+  return {
+    leads: recorte.slice(inicio, inicio + tamanhoPagina),
+    total: recorte.length,
+    pagina,
+    tamanhoPagina
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* GET /api/leads/distribuicao-score                                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Contagens reais observadas no dataset (175.554 leads, 10 faixas de 10 pontos) —
+ * a distribuição é fortemente bimodal por como o rótulo/score é construído (ver
+ * `domain.action_rules` no backend), então gerar isso a partir de uma curva
+ * genérica erraria o formato que o gráfico existe pra mostrar.
+ */
+export function mockScoreDistribution(): ScoreDistributionResponse {
+  const quantidades = [45501, 1103, 964, 387, 756, 288, 540, 440, 890, 124685];
+  return quantidades.map((quantidade, indice) => ({
+    faixaInicio: indice * 10,
+    faixaFim: (indice + 1) * 10,
+    quantidade
+  }));
 }
 
 /* ------------------------------------------------------------------ */
