@@ -10,13 +10,17 @@ client = TestClient(app)
 
 
 def _leads_teste() -> pd.DataFrame:
+    # prioridade == score em todas as linhas: os testes que dependem da ordem/filtro
+    # existentes continuam válidos (ordenar por prioridade dá o mesmo resultado que
+    # ordenar por score aqui); o comportamento real de "prioridade pode divergir do
+    # score" tem teste dedicado em test_leads_ordenacao_usa_prioridade_nao_so_score.
     linhas = [
-        {"vin": "v1", "dealerCode": "100", "score": 0.9, "motivo": "motivo v1", "modelo": "RANGER", "diasSemServico": 400.0},
-        {"vin": "v2", "dealerCode": "100", "score": 0.3, "motivo": "motivo v2", "modelo": "KA", "diasSemServico": 90.0},
-        {"vin": "v3", "dealerCode": "200", "score": 0.8, "motivo": "motivo v3", "modelo": "RANGER", "diasSemServico": 250.0},
-        {"vin": "v4", "dealerCode": "200", "score": 0.1, "motivo": "motivo v4", "modelo": "ECOSPORT", "diasSemServico": 10.0},
-        # empatado com v1 em score (0.9), mas com mais dias sem servico -> deve rankear antes.
-        {"vin": "v5", "dealerCode": "100", "score": 0.9, "motivo": "motivo v5", "modelo": "RANGER", "diasSemServico": 800.0},
+        {"vin": "v1", "dealerCode": "100", "score": 0.9, "motivo": "motivo v1", "modelo": "RANGER", "diasSemServico": 400.0, "prioridade": 0.9},
+        {"vin": "v2", "dealerCode": "100", "score": 0.3, "motivo": "motivo v2", "modelo": "KA", "diasSemServico": 90.0, "prioridade": 0.3},
+        {"vin": "v3", "dealerCode": "200", "score": 0.8, "motivo": "motivo v3", "modelo": "RANGER", "diasSemServico": 250.0, "prioridade": 0.8},
+        {"vin": "v4", "dealerCode": "200", "score": 0.1, "motivo": "motivo v4", "modelo": "ECOSPORT", "diasSemServico": 10.0, "prioridade": 0.1},
+        # empatado com v1 em score/prioridade (0.9), mas com mais dias sem servico -> deve rankear antes.
+        {"vin": "v5", "dealerCode": "100", "score": 0.9, "motivo": "motivo v5", "modelo": "RANGER", "diasSemServico": 800.0, "prioridade": 0.9},
     ]
     return pd.DataFrame(linhas)
 
@@ -26,18 +30,18 @@ def _dados_de_teste(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(leads_router, "load_leads_data", lambda: _leads_teste())
 
 
-def test_leads_sem_filtro_retorna_todos_ordenados_por_score_desc() -> None:
+def test_leads_sem_filtro_retorna_todos_ordenados_por_prioridade_desc() -> None:
     resposta = client.get("/api/leads")
     assert resposta.status_code == 200
 
     corpo = resposta.json()
     assert [linha["vin"] for linha in corpo["leads"]] == ["v5", "v1", "v3", "v2", "v4"]
-    scores = [linha["score"] for linha in corpo["leads"]]
-    assert scores == sorted(scores, reverse=True)
+    prioridades = [linha["prioridade"] for linha in corpo["leads"]]
+    assert prioridades == sorted(prioridades, reverse=True)
 
 
-def test_leads_empate_de_score_desempata_por_dias_sem_servico() -> None:
-    # v1 e v5 empatados em score 0.9 — sem desempate, a ordem entre eles seria
+def test_leads_empate_de_prioridade_desempata_por_dias_sem_servico() -> None:
+    # v1 e v5 empatados em prioridade 0.9 — sem desempate, a ordem entre eles seria
     # arbitraria (a ordem de geracao do CSV); com diasSemServico, o VIN ha mais
     # tempo sem servico vem primeiro.
     resposta = client.get("/api/leads")
@@ -45,18 +49,35 @@ def test_leads_empate_de_score_desempata_por_dias_sem_servico() -> None:
 
     assert corpo[0]["vin"] == "v5"
     assert corpo[1]["vin"] == "v1"
-    assert corpo[0]["score"] == corpo[1]["score"] == 0.9
+    assert corpo[0]["prioridade"] == corpo[1]["prioridade"] == 0.9
     assert corpo[0]["diasSemServico"] > corpo[1]["diasSemServico"]
 
 
-def test_leads_devolve_vin_score_motivo_concessionaria_modelo_e_dias() -> None:
+def test_leads_ordenacao_usa_prioridade_nao_so_score(monkeypatch: pytest.MonkeyPatch) -> None:
+    # va tem score maior, mas vb tem prioridade maior (mais valor de cliente por
+    # tras) — a fila deve respeitar prioridade, nao score bruto.
+    leads_com_prioridade_divergente = pd.DataFrame([
+        {"vin": "va", "dealerCode": "100", "score": 0.9, "motivo": "m", "modelo": "RANGER", "diasSemServico": 100.0, "prioridade": 0.5},
+        {"vin": "vb", "dealerCode": "100", "score": 0.5, "motivo": "m", "modelo": "RANGER", "diasSemServico": 100.0, "prioridade": 0.9},
+    ])
+    monkeypatch.setattr(leads_router, "load_leads_data", lambda: leads_com_prioridade_divergente)
+
+    resposta = client.get("/api/leads")
+    corpo = resposta.json()["leads"]
+
+    assert [linha["vin"] for linha in corpo] == ["vb", "va"]
+
+
+def test_leads_devolve_vin_score_motivo_concessionaria_modelo_dias_e_prioridade() -> None:
     resposta = client.get("/api/leads")
     primeiro = resposta.json()["leads"][0]
 
-    assert set(primeiro.keys()) == {"vin", "dealerCode", "score", "motivo", "modelo", "diasSemServico"}
+    assert set(primeiro.keys()) == {
+        "vin", "dealerCode", "score", "motivo", "modelo", "diasSemServico", "prioridade",
+    }
     assert primeiro == {
         "vin": "v5", "dealerCode": "100", "score": 0.9, "motivo": "motivo v5",
-        "modelo": "RANGER", "diasSemServico": 800.0,
+        "modelo": "RANGER", "diasSemServico": 800.0, "prioridade": 0.9,
     }
 
 
@@ -81,7 +102,7 @@ def test_leads_pagina_traz_o_tamanho_de_pagina_pedido(monkeypatch: pytest.Monkey
     muitos_leads = pd.DataFrame([
         {
             "vin": f"v{i}", "dealerCode": "100", "score": i / 1000, "motivo": "m",
-            "modelo": "RANGER", "diasSemServico": float(i),
+            "modelo": "RANGER", "diasSemServico": float(i), "prioridade": i / 1000,
         }
         for i in range(200)
     ])
@@ -102,7 +123,7 @@ def test_leads_segunda_pagina_traz_os_proximos_leads(monkeypatch: pytest.MonkeyP
     muitos_leads = pd.DataFrame([
         {
             "vin": f"v{i}", "dealerCode": "100", "score": i / 1000, "motivo": "m",
-            "modelo": "RANGER", "diasSemServico": float(i),
+            "modelo": "RANGER", "diasSemServico": float(i), "prioridade": i / 1000,
         }
         for i in range(200)
     ])
@@ -121,7 +142,7 @@ def test_leads_pagina_alem_do_total_retorna_lista_vazia_sem_erro(monkeypatch: py
     muitos_leads = pd.DataFrame([
         {
             "vin": f"v{i}", "dealerCode": "100", "score": i / 1000, "motivo": "m",
-            "modelo": "RANGER", "diasSemServico": float(i),
+            "modelo": "RANGER", "diasSemServico": float(i), "prioridade": i / 1000,
         }
         for i in range(10)
     ])

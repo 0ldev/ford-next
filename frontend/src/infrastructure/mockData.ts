@@ -465,20 +465,29 @@ function gerarLeads(): Lead[] {
     const excedente = Math.round(10 + score * 90);
     const idadeAnos = 1 + Math.floor(random() * 9);
 
+    // Espelha domain/prioritization.py: valor do cliente = nº de serviços (aqui
+    // simulado, 0 a 8+) normalizado em [0, 1] com teto em 8; prioridade = 70%
+    // risco + 30% valor do cliente. Independente do score, para gerar casos
+    // reais de divergência entre "mais risco" e "mais prioridade".
+    const numeroServicos = Math.floor(random() * 10);
+    const valorCliente = Math.min(numeroServicos, 8) / 8;
+    const prioridade = 0.7 * score + 0.3 * valorCliente;
+
     leads.push({
       vin: gerarVinHash(i),
       dealerCode: concessionaria.dealerCode,
       score: arredondar(score, 2),
       motivo: gerarMotivo(i, dias, excedente, modelo, idadeAnos),
       modelo,
-      diasSemServico: dias
+      diasSemServico: dias,
+      prioridade: arredondar(prioridade, 2)
     });
   }
 
-  // Mesmo desempate do backend real (issue de score empatado): score desc,
-  // diasSemServico desc — sem isso, um empate de score na mock reordenaria a
-  // cada geração e o desempate ficaria sem sentido de se testar na tela.
-  return leads.sort((a, b) => b.score - a.score || b.diasSemServico - a.diasSemServico);
+  // Mesmo desempate do backend real (issue de prioridade empatada): prioridade
+  // desc, diasSemServico desc — sem isso, um empate na mock reordenaria a cada
+  // geração e o desempate ficaria sem sentido de se testar na tela.
+  return leads.sort((a, b) => b.prioridade - a.prioridade || b.diasSemServico - a.diasSemServico);
 }
 
 const LEADS_MOCK = gerarLeads();

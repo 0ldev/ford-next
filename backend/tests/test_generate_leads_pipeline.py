@@ -53,6 +53,26 @@ def test_build_leads_table_ainda_descarta_vin_de_ml_com_feature_faltando(monkeyp
     assert "v1" not in resultado["VIN_Hash"].values
 
 
+def test_build_leads_table_calcula_prioridade_combinando_score_e_valor_cliente(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "src.interfaces.pipeline.generate_leads.load_features", lambda: _tabela_features()
+    )
+    monkeypatch.setattr(
+        "src.interfaces.pipeline.generate_leads.load_model", lambda: _ModeloFixo()
+    )
+
+    resultado = build_leads_table().set_index("VIN_Hash")
+
+    # Os 3 VINs de _tabela_features() tem n_servicos=3 -> valor_cliente = 3/8 = 0.375.
+    # v1 e RANGER (ML): score_risco = 0.99 (via _ModeloFixo).
+    esperado_v1 = pytest.approx(0.7 * 0.99 + 0.3 * (3 / 8))
+    assert resultado.loc["v1", "prioridade"] == esperado_v1
+
+    # v2 e ECOSPORT (heuristica): gap_com_fallback=2.5 > threshold 2.0 -> score_risco=1.0.
+    esperado_v2 = pytest.approx(0.7 * 1.0 + 0.3 * (3 / 8))
+    assert resultado.loc["v2", "prioridade"] == esperado_v2
+
+
 def _leads_df() -> pd.DataFrame:
     return pd.DataFrame({
         "VIN_Hash": ["v1", "v2"],
@@ -61,6 +81,7 @@ def _leads_df() -> pd.DataFrame:
         "motivo_risco": ["180 dias sem serviço, 40% acima do intervalo esperado do modelo", "dentro do prazo"],
         "ModelName": ["RANGER", "KA"],
         "dias_desde_ultimo_servico": [180.0, 30.0],
+        "prioridade": [0.85, 0.25],
         "coluna_extra_que_nao_faz_parte_do_schema": ["x", "y"],
     })
 
@@ -81,6 +102,7 @@ def test_export_renomeia_as_colunas_conforme_o_schema(tmp_path) -> None:
     assert resultado["score"].tolist() == [0.9, 0.3]
     assert resultado["modelo"].tolist() == ["RANGER", "KA"]
     assert resultado["diasSemServico"].tolist() == [180.0, 30.0]
+    assert resultado["prioridade"].tolist() == [0.85, 0.25]
 
 
 def test_export_nao_inclui_colunas_fora_do_schema(tmp_path) -> None:

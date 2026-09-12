@@ -10,6 +10,7 @@ from src.application.generate_leads import (
     rank_by_dealer,
 )
 from src.application.train_risk_model import FEATURE_COLUMNS
+from src.domain.prioritization import compute_prioridade, compute_valor_cliente
 from src.infrastructure.model_repository import load_model
 from src.interfaces.pipeline.build_features import load_features
 
@@ -26,6 +27,7 @@ LEADS_SCHEMA: dict[str, str] = {
     "motivo_risco": "motivo",
     "ModelName": "modelo",
     "dias_desde_ultimo_servico": "diasSemServico",
+    "prioridade": "prioridade",
 }
 
 
@@ -45,6 +47,11 @@ def build_leads_table() -> pd.DataFrame:
     `gap_com_fallback`. Um VIN fora de RANGER/KA com `idade_dias` nulo (ex.: sem
     `SalesDate`/`DeliveryDate`) mas `gap_com_fallback` válido continua pontuável — não é
     descartado por faltar uma coluna que a heurística nem usa.
+
+    Também calcula `prioridade` (`domain.prioritization.compute_prioridade`), cruzando
+    `score_risco` com o valor do cliente (`compute_valor_cliente` a partir de
+    `n_servicos`, já presente na tabela de features) — é o critério de ordenação da
+    fila em `/api/leads`, não `score_risco` sozinho (ver Pilar 3 do plano).
     """
     tabela = load_features()
     modelo = load_model()
@@ -59,6 +66,9 @@ def build_leads_table() -> pd.DataFrame:
     # (FEATURE_COLUMNS) e a heuristica de baixo volume, inclusive para os VINs de
     # fallback (1 unico servico) onde os dois valores divergem.
     leads = add_risk_explanation(leads, gap_col="gap_com_fallback")
+
+    valor_cliente = compute_valor_cliente(leads["n_servicos"])
+    leads["prioridade"] = compute_prioridade(leads["score_risco"], valor_cliente)
 
     return rank_by_dealer(leads, dealer_col="DealerCode", score_col="score_risco")
 

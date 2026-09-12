@@ -81,8 +81,14 @@ export interface Lead {
   /** Justificativa legível do score, gerada pelo modelo. */
   motivo: string;
   modelo: string;
-  /** Dias desde o último serviço — também é o critério de desempate do score. */
+  /** Dias desde o último serviço — critério de desempate da prioridade. */
   diasSemServico: number;
+  /**
+   * Prioridade final de contato, 0 a 1: cruza `score` (risco) com o valor do
+   * cliente (histórico de serviços) — ver `domain/prioritization.py` no backend.
+   * É o critério de ordenação da fila, não `score` sozinho.
+   */
+  prioridade: number;
 }
 
 /**
