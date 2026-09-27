@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "VIN Share Intelligence Hub",
+    "slug": "vin-share-hub",
+    "scheme": "vinsharehub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "br.com.fiap.vinsharehub",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#F4F6FB",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-router",
+      "expo-font"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "31c146f0-91b9-4a7b-9aa3-ea9ae15d88ca"
+      }
+    },
+    "owner": "0ldev"
+  }
+}
