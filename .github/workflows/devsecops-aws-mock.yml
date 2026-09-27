@@ -1,0 +1,168 @@
+name: DevSecOps AWS Mock
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: devsecops-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests and frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+        working-directory: backend
+      - name: Run backend tests
+        run: python -m pytest tests/ -q
+        working-directory: backend
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+      - name: Run frontend tests
+        run: npm run test -- --run
+        working-directory: frontend
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+  sast:
+    name: SAST - CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python,javascript-typescript
+      - uses: github/codeql-action/analyze@v3
+
+  secrets:
+    name: Secret scanning - Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencies:
+    name: SCA - dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install --upgrade pip pip-audit
+          pip-audit -r backend/requirements.txt
+      - name: Audit npm dependencies
+        run: npm audit --audit-level=high
+        working-directory: frontend
+
+  iac:
+    name: IaC and container configuration scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: dockerfile,docker_compose,github_actions
+          quiet: true
+
+  images:
+    name: Build and scan container images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          load: true
+          tags: ford-next-backend:ci
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          load: true
+          tags: ford-next-frontend:ci
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ford-next-backend:ci
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ford-next-frontend:ci
+          format: table
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+
+  aws-mock-deploy:
+    name: AWS deploy simulation (no AWS resources)
+    runs-on: ubuntu-latest
+    needs:
+      - tests
+      - sast
+      - secrets
+      - dependencies
+      - iac
+      - images
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    steps:
+      - name: Print simulated deployment plan
+        env:
+          AWS_REGION: us-east-1
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          {
+            echo "## AWS deployment simulation"
+            echo
+            echo "- Region: \`${AWS_REGION}\`"
+            echo "- ECR image tag: \`${IMAGE_TAG}\`"
+            echo "- Target: ECS Fargate (simulated)"
+            echo "- Result: pipeline gates passed; no AWS credentials or resources were used."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Mock deploy concluido. Nenhum recurso AWS foi criado."

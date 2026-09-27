@@ -79,6 +79,55 @@ npm run dev
 
 Abre em `http://localhost:5173` — o Vite faz proxy de `/api` para `localhost:8000`. `USE_MOCK` em `frontend/src/infrastructure/config.ts` está `false` (API real); mude para `true` para rodar o dashboard sem o backend no ar.
 
+## Como rodar com Docker
+
+Pré-requisito: Docker Desktop instalado e em execução, com Docker Compose v2.
+
+Na pasta raiz do repositório, execute:
+
+```powershell
+docker compose up --build
+```
+
+Na primeira execução, o serviço `pipeline` processa `backend/data/raw/vin_share.zip`, treina o modelo e grava os arquivos em volumes Docker. Quando ele termina, a API inicia; o serviço web publica o dashboard em <http://localhost:8080> e encaminha as chamadas `/api` para a API dentro da rede do Compose. Os dados processados persistem entre reinicializações.
+
+Verificações e operação:
+
+```powershell
+docker compose ps
+docker compose logs -f pipeline api web
+Invoke-RestMethod http://localhost:8080/health
+Invoke-RestMethod http://localhost:8080/health-api
+```
+
+Para parar, use `Ctrl+C` e depois `docker compose down`. Para reconstruir as imagens após mudanças, execute novamente `docker compose up --build`. O backend não publica uma porta diretamente no host; o acesso à API passa pelo proxy web. Logs da aplicação vão para a saída padrão dos contêineres e podem ser consultados com `docker compose logs`.
+
+O Compose aplica uma configuração local endurecida (processos sem root, filesystem somente leitura, remoção de capabilities e `no-new-privileges`). Isso coloca a aplicação para rodar em contêiner, mas não substitui os demais itens da etapa de cibersegurança da apresentação: análise de dependências/segredos/imagens no CI, infraestrutura como código para deploy, dashboards e alertas, e evidências de conformidade ainda precisam ser definidos para o ambiente alvo.
+
+## Pipeline DevSecOps AWS (simulado)
+
+O workflow [`.github/workflows/devsecops-aws-mock.yml`](.github/workflows/devsecops-aws-mock.yml) executa em push, pull request e manualmente pela aba **Actions** do GitHub. Ele roda os testes Python e frontend, SAST com CodeQL, secret scanning com Gitleaks, SCA com `pip-audit` e `npm audit`, análise do Compose/Dockerfiles/workflows com Checkov e build mais scan Trivy das imagens.
+
+Após todos os gates passarem, o job final publica um resumo de deploy demonstrativo para ECS/ECR. Ele não conecta à AWS, não usa credenciais e não cria recursos. A infraestrutura AWS, observabilidade gerenciada e integração OIDC para deploy real continuam fora deste mock; antes de habilitar AWS real, também será necessário revisar findings dos scanners e proteger os ambientes/secrets do repositório.
+
+```mermaid
+flowchart LR
+    C[Commit ou pull request] --> T[Testes e build]
+    C --> S[SAST CodeQL]
+    C --> G[Secret scan Gitleaks]
+    C --> D[SCA pip-audit e npm audit]
+    C --> I[Checkov Docker e Compose]
+    C --> B[Build e Trivy nas imagens]
+    T --> A{Todos os gates passaram?}
+    S --> A
+    G --> A
+    D --> A
+    I --> A
+    B --> A
+    A -->|Push na branch padrão ou execução manual| M[Deploy AWS simulado]
+    A -->|Pull request / falha| F[Sem deploy]
+```
+
 ## Testes
 
 ```bash

@@ -1,0 +1,85 @@
+services:
+  pipeline:
+    build:
+      context: ./backend
+    command:
+      - sh
+      - -c
+      - >-
+        if [ -s data/processed/service_history.parquet ] &&
+           [ -s data/processed/vehicle_features.parquet ] &&
+           [ -s data/processed/leads.csv ] &&
+           [ -s models/risk_model.pkl ]; then
+          echo 'Artefatos processados encontrados; pulando pipeline.';
+        else
+          python -m src.interfaces.pipeline.build_service_history &&
+          python -m src.interfaces.pipeline.build_features &&
+          python -m src.interfaces.pipeline.train_model &&
+          python -m src.interfaces.pipeline.generate_leads;
+        fi
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - processed-data:/app/data/processed
+      - model-data:/app/models
+
+  api:
+    build:
+      context: ./backend
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - processed-data:/app/data/processed:ro
+      - model-data:/app/models:ro
+    depends_on:
+      pipeline:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  web:
+    build:
+      context: ./frontend
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  processed-data:
+  model-data:
