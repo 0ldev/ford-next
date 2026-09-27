@@ -1,0 +1,1 @@
+export const LATENCIA_SIMULADA_MS = 250;

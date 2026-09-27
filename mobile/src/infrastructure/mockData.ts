@@ -1,0 +1,465 @@
+import type {
+  AcaoRecomendada,
+  AcaoTipo,
+  AnomaliesResponse,
+  Anomaly,
+  Catalogo,
+  Lead,
+  LeadsFiltros,
+  LeadsResponse,
+  ScoreDistributionResponse,
+  TrendConcessionariaFiltros,
+  TrendConcessionariaResponse,
+  TrendFiltros,
+  TrendResponse,
+  VinShareFiltros,
+  VinShareResponse
+} from "../domain/types";
+
+export interface ConcessionariaMock {
+  dealerCode: string;
+  nome: string;
+}
+
+export const CONCESSIONARIAS: ConcessionariaMock[] = [
+  { dealerCode: "BR0142", nome: "Ford Sorana — Campinas/SP" },
+  { dealerCode: "BR0317", nome: "Ford Rodobens — Ribeirão Preto/SP" },
+  { dealerCode: "BR0588", nome: "Ford Vale Sul — São José dos Campos/SP" },
+  { dealerCode: "BR0731", nome: "Ford Bahia Motors — Salvador/BA" },
+  { dealerCode: "BR0904", nome: "Ford Trioeste — Curitiba/PR" }
+];
+
+export const MODELOS = ["RANGER", "KA", "ECOSPORT", "TERRITORY", "MAVERICK"] as const;
+
+export function rotuloDaConcessionaria(dealerCode: string): string {
+  return CONCESSIONARIAS.find((item) => item.dealerCode === dealerCode)?.nome ?? dealerCode;
+}
+
+export interface FaixaIdadeMock {
+  value: string;
+  label: string;
+}
+
+export const FAIXAS_IDADE: FaixaIdadeMock[] = [
+  { value: "0-1", label: "0-1 anos" },
+  { value: "1-2", label: "1-2 anos" },
+  { value: "2-4", label: "2-4 anos" },
+  { value: "4+", label: "4+ anos" }
+];
+
+export const TIPOS_SERVICO = [
+  "Revisão programada",
+  "Manutenção corretiva",
+  "Garantia",
+  "Recall",
+  "Funilaria"
+] as const;
+
+const PESO_MODELO: Record<string, number> = {
+  RANGER: 0.57,
+  KA: 0.22,
+  ECOSPORT: 0.11,
+  TERRITORY: 0.06,
+  MAVERICK: 0.04
+};
+
+const SHARE_BASE_MODELO: Record<string, number> = {
+  RANGER: 42.6,
+  KA: 26.9,
+  ECOSPORT: 31.4,
+  TERRITORY: 47.2,
+  MAVERICK: 51.8
+};
+
+const ELEGIVEIS_MODELO: Record<string, number> = {
+  RANGER: 100066,
+  KA: 38622,
+  ECOSPORT: 19311,
+  TERRITORY: 10533,
+  MAVERICK: 7022
+};
+
+function misturarSemente(valor: number): number {
+  let x = valor >>> 0;
+  x = Math.imul(x ^ (x >>> 16), 0x21f0aaad);
+  x = Math.imul(x ^ (x >>> 15), 0x735a2d97);
+  return (x ^ (x >>> 15)) >>> 0;
+}
+
+function criarRandom(semente: number): () => number {
+  let estado = misturarSemente(semente);
+  return () => {
+    estado = (estado + 0x6d2b79f5) >>> 0;
+    let t = estado;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashTexto(texto: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < texto.length; i += 1) {
+    hash ^= texto.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function gerarVinHash(indice: number): string {
+  const random = criarRandom(hashTexto(`vin-${indice}`));
+  let hex = "";
+  while (hex.length < 40) {
+    hex += Math.floor(random() * 0xffffffff)
+      .toString(16)
+      .padStart(8, "0");
+  }
+  return hex.slice(0, 40);
+}
+
+function arredondar(valor: number, casas = 1): number {
+  const fator = 10 ** casas;
+  return Math.round(valor * fator) / fator;
+}
+
+function limitar(valor: number, minimo: number, maximo: number): number {
+  return Math.min(maximo, Math.max(minimo, valor));
+}
+
+export function listarMeses(inicio: string, fim: string): string[] {
+  const [anoInicio, mesInicio] = inicio.split("-").map(Number);
+  const [anoFim, mesFim] = fim.split("-").map(Number);
+  const meses: string[] = [];
+
+  let ano = anoInicio;
+  let mes = mesInicio;
+  while ((ano < anoFim || (ano === anoFim && mes <= mesFim)) && meses.length < 120) {
+    meses.push(`${ano}-${String(mes).padStart(2, "0")}`);
+    mes += 1;
+    if (mes > 12) {
+      mes = 1;
+      ano += 1;
+    }
+  }
+  return meses;
+}
+
+const PERIODO_PADRAO_INICIO = "2025-01";
+const PERIODO_PADRAO_FIM = "2026-06";
+
+const FATOR_FAIXA_IDADE: Record<string, number> = {
+  "0-1": 1.58,
+  "1-2": 1.29,
+  "2-4": 0.97,
+  "4+": 0.59
+};
+
+const FATOR_TIPO_SERVICO: Record<string, number> = {
+  "Revisão programada": 1.18,
+  "Manutenção corretiva": 0.88,
+  Garantia: 1.24,
+  Recall: 1.07,
+  Funilaria: 0.52
+};
+
+function ajustePorPeriodo(inicio?: string, fim?: string): number {
+  if (!inicio && !fim) return 0;
+
+  const random = criarRandom(hashTexto(`periodo|${inicio ?? ""}|${fim ?? ""}`));
+  const magnitude = 3 + random() * 2;
+  const sinal = random() < 0.5 ? -1 : 1;
+  return sinal * magnitude;
+}
+
+export function mockVinShare(filtros: VinShareFiltros = {}): VinShareResponse {
+  const modelo = filtros.modelo;
+  const shareBase = modelo ? (SHARE_BASE_MODELO[modelo] ?? 33.5) : 34.7;
+
+  let share = shareBase;
+  share *= filtros.faixaIdade ? (FATOR_FAIXA_IDADE[filtros.faixaIdade] ?? 1) : 1;
+  share *= filtros.tipoServico ? (FATOR_TIPO_SERVICO[filtros.tipoServico] ?? 1) : 1;
+
+  if (filtros.concessionaria) {
+    const random = criarRandom(hashTexto(filtros.concessionaria));
+    share *= 0.78 + random() * 0.44;
+  }
+
+  share += ajustePorPeriodo(filtros.periodoInicio, filtros.periodoFim);
+
+  const elegiveisTotais = modelo
+    ? (ELEGIVEIS_MODELO[modelo] ?? 12000)
+    : Object.values(ELEGIVEIS_MODELO).reduce((soma, valor) => soma + valor, 0);
+
+  let elegiveis = elegiveisTotais;
+  if (filtros.concessionaria) elegiveis = Math.round(elegiveis * 0.031);
+  if (filtros.faixaIdade) elegiveis = Math.round(elegiveis * 0.34);
+  if (filtros.periodoInicio || filtros.periodoFim) elegiveis = Math.round(elegiveis * 0.72);
+
+  const vinShareEstimado = arredondar(limitar(share, 3, 92));
+  const totalComServico = Math.round((elegiveis * vinShareEstimado) / 100);
+
+  return {
+    vinShareEstimado,
+    totalVeiculosElegiveis: elegiveis,
+    totalComServico,
+    filtrosAplicados: {
+      concessionaria: filtros.concessionaria ?? null,
+      modelo: filtros.modelo ?? null,
+      faixaIdade: filtros.faixaIdade ?? null,
+      tipoServico: filtros.tipoServico ?? null,
+      periodoInicio: filtros.periodoInicio ?? null,
+      periodoFim: filtros.periodoFim ?? null
+    }
+  };
+}
+
+export function mockTrend(filtros: TrendFiltros = {}): TrendResponse {
+  const modelos = filtros.modelo && filtros.modelo.length > 0 ? filtros.modelo : [...MODELOS];
+  const meses = listarMeses(
+    filtros.periodoInicio ?? PERIODO_PADRAO_INICIO,
+    filtros.periodoFim ?? PERIODO_PADRAO_FIM
+  );
+
+  const pontos: TrendResponse = [];
+  for (const modelo of modelos) {
+    const base = SHARE_BASE_MODELO[modelo] ?? 33.5;
+    const random = criarRandom(hashTexto(`trend-${modelo}`));
+    const inclinacao = -0.28 - random() * 0.35;
+
+    meses.forEach((mes, indice) => {
+      const sazonalidade = Math.sin((indice / 12) * Math.PI * 2) * 2.1;
+      const ruido = (random() - 0.5) * 3.4;
+      const valor = limitar(base + inclinacao * indice + sazonalidade + ruido, 2, 95);
+      pontos.push({ data: mes, valor: arredondar(valor), categoria: modelo });
+    });
+  }
+
+  return pontos;
+}
+
+function shareBaseConcessionaria(dealerCode: string): number {
+  const random = criarRandom(hashTexto(`share-dealer-${dealerCode}`));
+  return 15 + random() * 45;
+}
+
+export function mockTrendConcessionarias(
+  filtros: TrendConcessionariaFiltros = {}
+): TrendConcessionariaResponse {
+  const dealers =
+    filtros.concessionaria && filtros.concessionaria.length > 0
+      ? filtros.concessionaria
+      : CONCESSIONARIAS.map((item) => item.dealerCode);
+  const meses = listarMeses(
+    filtros.periodoInicio ?? PERIODO_PADRAO_INICIO,
+    filtros.periodoFim ?? PERIODO_PADRAO_FIM
+  );
+
+  const pontos: TrendConcessionariaResponse = [];
+  for (const dealerCode of dealers) {
+    const base = shareBaseConcessionaria(dealerCode);
+    const random = criarRandom(hashTexto(`trend-dealer-${dealerCode}`));
+
+    meses.forEach((mes) => {
+      const ruido = (random() - 0.5) * 6;
+      const valor = limitar(base + ruido, 2, 95);
+      pontos.push({ data: mes, valor: arredondar(valor), categoria: dealerCode });
+    });
+  }
+
+  return pontos;
+}
+
+export function mockAnomalies(): AnomaliesResponse {
+  const anomalias: Anomaly[] = [
+    {
+      tipo: "queda_dealer",
+      entidade: "Ford Bahia Motors — Salvador/BA",
+      severidade: 0.91,
+      descricao:
+        "Queda de 38% no VIN Share nos últimos 3 meses (41,2% para 25,5%). 1.184 veículos elegíveis sem retorno à rede.",
+      resumo: "Queda de 38% no VIN Share nos últimos 3 meses",
+      valorReferencia: 41.2,
+      valorAtual: 25.5
+    },
+    {
+      tipo: "gap_modelo",
+      entidade: "KA",
+      severidade: 0.84,
+      descricao:
+        "26,9% de VIN Share, 7,8 pontos abaixo da média da rede. Frota de 38.622 veículos com idade média de 6,4 anos.",
+      resumo: "VIN Share 7,8 pontos abaixo da média da rede (frota de 38.622 veículos)",
+      valorReferencia: 34.7,
+      valorAtual: 26.9
+    },
+    {
+      tipo: "pico_mainsource",
+      entidade: "Ford Trioeste — Curitiba/PR",
+      severidade: 0.72,
+      descricao:
+        "Aumento de 61% em serviços registrados fora da rede oficial em 2026. Indício de migração para oficinas independentes.",
+      resumo: "Aumento de 61% em serviços registrados fora da rede oficial",
+      valorReferencia: 18.5,
+      valorAtual: 29.8
+    },
+    {
+      tipo: "queda_dealer",
+      entidade: "Ford Vale Sul — São José dos Campos/SP",
+      severidade: 0.58,
+      descricao: "Retenção pós-garantia caiu de 47% para 34% em 12 meses, concentrada em veículos de 4 a 7 anos.",
+      resumo: "Retenção pós-garantia caiu no VIN Share em 12 meses",
+      valorReferencia: 47,
+      valorAtual: 34
+    },
+    {
+      tipo: "gap_modelo",
+      entidade: "ECOSPORT",
+      severidade: 0.44,
+      descricao: "Intervalo médio entre revisões subiu de 11,2 para 15,8 meses desde 2024.",
+      resumo: "VIN Share abaixo da média da rede desde 2024",
+      valorReferencia: 32.0,
+      valorAtual: 24.0
+    },
+    {
+      tipo: "pico_mainsource",
+      entidade: "RANGER",
+      severidade: 0.29,
+      descricao: "Leve alta (9%) de serviços fora da rede em veículos acima de 8 anos, dentro do esperado para a faixa.",
+      resumo: "Leve alta de serviços fora da rede em veículos acima de 8 anos",
+      valorReferencia: 41.0,
+      valorAtual: 44.7
+    }
+  ];
+
+  return [...anomalias].sort((a, b) => b.severidade - a.severidade);
+}
+
+const TOTAL_LEADS_MOCK = 64;
+
+function gerarMotivo(
+  indiceModelo: number,
+  dias: number,
+  excedente: number,
+  modelo: string,
+  idadeAnos: number
+): string {
+  const motivos = [
+    `${dias} dias sem serviço, ${excedente}% acima do intervalo esperado do modelo`,
+    `Última revisão registrada fora da rede oficial há ${dias} dias`,
+    `Garantia encerra em ${Math.max(30, 220 - dias)} dias e nenhuma revisão agendada`,
+    `Histórico de 4 serviços até 2024, nenhum nos últimos ${dias} dias`,
+    `${modelo} de ${idadeAnos} anos sem revisão programada desde a entrega`,
+    `Intervalo médio de 11 meses rompido: ${dias} dias desde a última ordem de serviço`,
+    `Queda de frequência: de 3 visitas/ano para nenhuma nos últimos ${Math.round(dias / 30)} meses`
+  ];
+  return motivos[indiceModelo % motivos.length];
+}
+
+function gerarLeads(): Lead[] {
+  const leads: Lead[] = [];
+  const modelosPonderados: string[] = [];
+  for (const modelo of MODELOS) {
+    const repeticoes = Math.max(1, Math.round((PESO_MODELO[modelo] ?? 0.05) * 20));
+    for (let i = 0; i < repeticoes; i += 1) modelosPonderados.push(modelo);
+  }
+
+  for (let i = 0; i < TOTAL_LEADS_MOCK; i += 1) {
+    const random = criarRandom(hashTexto(`lead-${i}`));
+    const concessionaria = CONCESSIONARIAS[i % CONCESSIONARIAS.length];
+    const modelo = modelosPonderados[Math.floor(random() * modelosPonderados.length)];
+
+    const faixa = i % 3;
+    const score =
+      faixa === 0
+        ? 0.71 + random() * 0.28
+        : faixa === 1
+          ? 0.31 + random() * 0.38
+          : 0.04 + random() * 0.25;
+
+    const dias = Math.round(60 + score * 480 + random() * 40);
+    const excedente = Math.round(10 + score * 90);
+    const idadeAnos = 1 + Math.floor(random() * 9);
+
+    const numeroServicos = Math.floor(random() * 10);
+    const valorCliente = Math.min(numeroServicos, 8) / 8;
+    const prioridade = 0.7 * score + 0.3 * valorCliente;
+
+    leads.push({
+      vin: gerarVinHash(i),
+      dealerCode: concessionaria.dealerCode,
+      score: arredondar(score, 2),
+      motivo: gerarMotivo(i, dias, excedente, modelo, idadeAnos),
+      modelo,
+      diasSemServico: dias,
+      prioridade: arredondar(prioridade, 2)
+    });
+  }
+
+  return leads.sort((a, b) => b.prioridade - a.prioridade || b.diasSemServico - a.diasSemServico);
+}
+
+const LEADS_MOCK = gerarLeads();
+
+export function mockLeads(filtros: LeadsFiltros = {}): LeadsResponse {
+  const filtro = filtros.concessionaria;
+
+  let recorte = LEADS_MOCK;
+  if (filtro) {
+    const concessionaria = CONCESSIONARIAS.find(
+      (item) => item.dealerCode === filtro || item.nome === filtro
+    );
+    const dealerCode = concessionaria?.dealerCode ?? filtro;
+    recorte = recorte.filter((lead) => lead.dealerCode === dealerCode);
+  }
+  if (filtros.scoreMinimo !== undefined) {
+    recorte = recorte.filter((lead) => lead.score >= filtros.scoreMinimo!);
+  }
+  if (filtros.scoreMaximo !== undefined) {
+    recorte = recorte.filter((lead) => lead.score < filtros.scoreMaximo!);
+  }
+
+  const tamanhoPagina = filtros.tamanhoPagina ?? 50;
+  const pagina = filtros.pagina ?? 1;
+  const inicio = (pagina - 1) * tamanhoPagina;
+
+  return {
+    leads: recorte.slice(inicio, inicio + tamanhoPagina),
+    total: recorte.length,
+    pagina,
+    tamanhoPagina
+  };
+}
+
+export function mockScoreDistribution(): ScoreDistributionResponse {
+  const quantidades = [45501, 1103, 964, 387, 756, 288, 540, 440, 890, 124685];
+  return quantidades.map((quantidade, indice) => ({
+    faixaInicio: indice * 10,
+    faixaFim: (indice + 1) * 10,
+    quantidade
+  }));
+}
+
+export function mockAcaoRecomendada(vin: string): AcaoRecomendada {
+  const lead = LEADS_MOCK.find((item) => item.vin === vin);
+  const score = lead?.score ?? 0.5;
+  const modelo = lead?.modelo ?? "RANGER";
+  const identificador = vin.slice(0, 8).toUpperCase();
+
+  const acao: AcaoTipo = score > 0.7 ? "contato_ativo" : score >= 0.3 ? "oferta" : "lembrete";
+
+  const mensagens: Record<AcaoTipo, string> = {
+    contato_ativo: `Ligação prioritária: cliente do ${modelo} (VIN ${identificador}) sem passar pela rede há mais de um ano. Oferecer diagnóstico gratuito e agendamento assistido com o consultor da concessionária.`,
+    oferta: `Olá! O seu ${modelo} (VIN ${identificador}) está próximo da revisão recomendada. Agende agora e garanta 15% de desconto em mão de obra na sua concessionária Ford.`,
+    lembrete: `Lembrete: a próxima revisão do seu ${modelo} (VIN ${identificador}) está se aproximando. Agende pelo app Ford e mantenha a garantia e o histórico do veículo em dia.`
+  };
+
+  return { acao, mensagem: mensagens[acao] };
+}
+
+export function mockCatalogo(): Catalogo {
+  return {
+    modelos: [...MODELOS],
+    concessionarias: CONCESSIONARIAS.map((item) => item.dealerCode),
+    tiposServico: [...TIPOS_SERVICO],
+    periodoDisponivel: { inicio: `${PERIODO_PADRAO_INICIO}-01`, fim: `${PERIODO_PADRAO_FIM}-30` }
+  };
+}
