@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from tests.conftest import auth_headers
 
 from src.interfaces.api.main import app
 from src.interfaces.api.routers import vin_share as vin_share_router
@@ -30,8 +31,8 @@ def _dados_de_teste(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(vin_share_router, "load_vin_share_data", lambda: _historico_pequeno())
 
 
-def test_vin_share_sem_filtros_retorna_200_com_schema_esperado() -> None:
-    resposta = client.get("/api/vin-share")
+def test_vin_share_sem_filtros_retorna_200_com_schema_esperado(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
     corpo = resposta.json()
@@ -44,19 +45,18 @@ def test_vin_share_sem_filtros_retorna_200_com_schema_esperado() -> None:
     }
 
 
-def test_vin_share_filtro_modelo_restringe_resultado() -> None:
-    resposta = client.get("/api/vin-share", params={"modelo": "RANGER"})
+def test_vin_share_filtro_modelo_restringe_resultado(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", params={"modelo": "RANGER"}, headers=auth_headers(token_gestor))
     corpo = resposta.json()
 
     assert corpo["totalVeiculosElegiveis"] == 1
     assert corpo["filtrosAplicados"]["modelo"] == "RANGER"
 
 
-def test_vin_share_filtros_combinados() -> None:
+def test_vin_share_filtros_combinados(token_gestor: str) -> None:
     resposta = client.get(
         "/api/vin-share",
-        params={"modelo": "KA", "tipoServico": "Recall", "concessionaria": "200"},
-    )
+        params={"modelo": "KA", "tipoServico": "Recall", "concessionaria": "200"}, headers=auth_headers(token_gestor))
     corpo = resposta.json()
 
     assert corpo["totalVeiculosElegiveis"] == 1
@@ -67,24 +67,23 @@ def test_vin_share_filtros_combinados() -> None:
     }
 
 
-def test_vin_share_faixa_idade_invalida_retorna_422() -> None:
-    resposta = client.get("/api/vin-share", params={"faixaIdade": "9+"})
+def test_vin_share_faixa_idade_invalida_retorna_422(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", params={"faixaIdade": "9+"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 422
 
 
-def test_vin_share_periodo_e_ecoado_em_formato_iso() -> None:
+def test_vin_share_periodo_e_ecoado_em_formato_iso(token_gestor: str) -> None:
     resposta = client.get(
         "/api/vin-share",
-        params={"periodoInicio": "2024-01-01", "periodoFim": "2024-12-31"},
-    )
+        params={"periodoInicio": "2024-01-01", "periodoFim": "2024-12-31"}, headers=auth_headers(token_gestor))
     corpo = resposta.json()
 
     assert corpo["filtrosAplicados"]["periodoInicio"] == "2024-01-01"
     assert corpo["filtrosAplicados"]["periodoFim"] == "2024-12-31"
 
 
-def test_vin_share_periodo_invalido_retorna_422() -> None:
-    resposta = client.get("/api/vin-share", params={"periodoInicio": "nao-e-uma-data"})
+def test_vin_share_periodo_invalido_retorna_422(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", params={"periodoInicio": "nao-e-uma-data"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 422
 
 
@@ -92,16 +91,15 @@ def test_vin_share_periodo_invalido_retorna_422() -> None:
 # Robustez / casos de borda que nao devem derrubar o endpoint                  #
 # --------------------------------------------------------------------------- #
 
-def test_vin_share_faixa_idade_vazia_retorna_422() -> None:
-    resposta = client.get("/api/vin-share", params={"faixaIdade": ""})
+def test_vin_share_faixa_idade_vazia_retorna_422(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", params={"faixaIdade": ""}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 422
 
 
-def test_vin_share_periodo_invertido_retorna_200_com_zero_resultados() -> None:
+def test_vin_share_periodo_invertido_retorna_200_com_zero_resultados(token_gestor: str) -> None:
     resposta = client.get(
         "/api/vin-share",
-        params={"periodoInicio": "2026-01-01", "periodoFim": "2020-01-01"},
-    )
+        params={"periodoInicio": "2026-01-01", "periodoFim": "2020-01-01"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
     corpo = resposta.json()
@@ -109,11 +107,10 @@ def test_vin_share_periodo_invertido_retorna_200_com_zero_resultados() -> None:
     assert corpo["vinShareEstimado"] == 0.0
 
 
-def test_vin_share_filtro_sem_correspondencia_retorna_200_com_zero_nao_erro() -> None:
+def test_vin_share_filtro_sem_correspondencia_retorna_200_com_zero_nao_erro(token_gestor: str) -> None:
     resposta = client.get(
         "/api/vin-share",
-        params={"modelo": "MODELO_QUE_NAO_EXISTE", "concessionaria": "999999999"},
-    )
+        params={"modelo": "MODELO_QUE_NAO_EXISTE", "concessionaria": "999999999"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
     corpo = resposta.json()
@@ -122,21 +119,20 @@ def test_vin_share_filtro_sem_correspondencia_retorna_200_com_zero_nao_erro() ->
     assert corpo["vinShareEstimado"] == 0.0
 
 
-def test_vin_share_modelo_com_caracteres_especiais_nao_quebra() -> None:
+def test_vin_share_modelo_com_caracteres_especiais_nao_quebra(token_gestor: str) -> None:
     resposta = client.get(
         "/api/vin-share",
-        params={"modelo": "RANGER'; DROP TABLE veiculos; -- <script>alert(1)</script> ção"},
-    )
+        params={"modelo": "RANGER'; DROP TABLE veiculos; -- <script>alert(1)</script> ção"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
     assert resposta.json()["totalVeiculosElegiveis"] == 0
 
 
-def test_vin_share_query_param_desconhecido_e_ignorado() -> None:
-    resposta = client.get("/api/vin-share", params={"paramInexistente": "qualquer-coisa"})
+def test_vin_share_query_param_desconhecido_e_ignorado(token_gestor: str) -> None:
+    resposta = client.get("/api/vin-share", params={"paramInexistente": "qualquer-coisa"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
 
-def test_vin_share_arquivo_de_dados_ausente_nao_derruba_o_processo() -> None:
+def test_vin_share_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     # Simula o cenario "esqueceram de rodar build_service_history": o handler propaga
     # a excecao, o middleware de erro do Starlette a converte em 500 — o processo da
     # API continua de pe para as proximas requisicoes, nao trava nem derruba o servidor.
@@ -149,11 +145,11 @@ def test_vin_share_arquivo_de_dados_ausente_nao_derruba_o_processo() -> None:
     client_sem_raise = TestClient(app, raise_server_exceptions=False)
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(vin_share_router, "load_vin_share_data", _sem_dados)
-        resposta = client_sem_raise.get("/api/vin-share")
+        resposta = client_sem_raise.get("/api/vin-share", headers=auth_headers(token_gestor))
 
     assert resposta.status_code == 500
 
     # confirma que o processo segue saudavel para a proxima requisicao (dados restaurados
     # pelo fixture autouse fora deste bloco `with`)
-    resposta_seguinte = client.get("/api/vin-share")
+    resposta_seguinte = client.get("/api/vin-share", headers=auth_headers(token_gestor))
     assert resposta_seguinte.status_code == 200

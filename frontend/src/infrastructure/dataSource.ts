@@ -11,10 +11,12 @@ import type {
   AcaoRecomendada,
   AnomaliesResponse,
   Catalogo,
+  CredenciaisLogin,
   LeadsFiltros,
   LeadsResponse,
   ResumoExecutivo,
   ScoreDistributionResponse,
+  Sessao,
   TrendConcessionariaFiltros,
   TrendConcessionariaResponse,
   TrendFiltros,
@@ -22,13 +24,14 @@ import type {
   VinShareFiltros,
   VinShareResponse
 } from "../domain/types";
-import { apiGet } from "./apiClient";
+import { apiGet, apiPost } from "./apiClient";
 import { MOCK_LATENCY_MS, USE_MOCK } from "./config";
 import {
   mockAcaoRecomendada,
   mockAnomalies,
   mockCatalogo,
   mockLeads,
+  mockLogin,
   mockResumoExecutivo,
   mockScoreDistribution,
   mockTrend,
@@ -41,6 +44,17 @@ function comLatencia<T>(valor: T): Promise<T> {
   return new Promise((resolve) => {
     setTimeout(() => resolve(valor), MOCK_LATENCY_MS);
   });
+}
+
+/**
+ * `async` de propósito (diferente das demais `buscarX` deste arquivo): ao
+ * contrário delas, `mockLogin` pode falhar (credenciais erradas) e precisa
+ * lançar de dentro de uma função `async` para virar rejeição de Promise —
+ * fora daqui, o `throw` seria síncrono e escaparia do `.catch` de quem chama.
+ */
+export async function login(credenciais: CredenciaisLogin): Promise<Sessao> {
+  if (USE_MOCK) return comLatencia(mockLogin(credenciais));
+  return apiPost<Sessao>("/auth/login", credenciais);
 }
 
 export function buscarVinShare(filtros: VinShareFiltros = {}): Promise<VinShareResponse> {

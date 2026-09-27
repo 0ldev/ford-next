@@ -56,11 +56,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from src.application.anomaly_detection import compute_anomalies
 from src.infrastructure.vin_share_repository import load_vin_share_data
+from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
 
 router = APIRouter()
 
@@ -81,5 +82,5 @@ def _anomalias_calculadas() -> list[dict]:
 
 
 @router.get("/anomalies", response_model=list[Anomaly])
-def get_anomalies() -> list[Anomaly]:
+def get_anomalies(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> list[Anomaly]:
     return [Anomaly(**anomalia) for anomalia in _anomalias_calculadas()]

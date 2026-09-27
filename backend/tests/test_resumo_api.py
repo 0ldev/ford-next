@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from tests.conftest import auth_headers
 
 from src.interfaces.api.main import app
 from src.interfaces.api.routers import anomalies as anomalies_router
@@ -49,31 +50,31 @@ def _dados_de_teste(monkeypatch: pytest.MonkeyPatch):
     anomalies_router._anomalias_calculadas.cache_clear()
 
 
-def test_resumo_executivo_retorna_as_tres_listas() -> None:
-    resposta = client.get("/api/resumo-executivo")
+def test_resumo_executivo_retorna_as_tres_listas(token_gestor: str) -> None:
+    resposta = client.get("/api/resumo-executivo", headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
     corpo = resposta.json()
     assert set(corpo.keys()) == {"concessionariasEmAlerta", "modelosMaiorRisco", "mesesMaiorChurn"}
 
 
-def test_resumo_executivo_modelos_maior_risco_reflete_os_leads() -> None:
-    resposta = client.get("/api/resumo-executivo")
+def test_resumo_executivo_modelos_maior_risco_reflete_os_leads(token_gestor: str) -> None:
+    resposta = client.get("/api/resumo-executivo", headers=auth_headers(token_gestor))
     corpo = resposta.json()
 
     assert corpo["modelosMaiorRisco"][0] == {"modelo": "KA", "percentualAltoRisco": 60.0, "totalVeiculos": 200}
 
 
-def test_resumo_executivo_arquivo_de_dados_ausente_nao_derruba_o_processo() -> None:
+def test_resumo_executivo_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     def _sem_dados() -> pd.DataFrame:
         raise FileNotFoundError("Lista de leads não encontrada.")
 
     client_sem_raise = TestClient(app, raise_server_exceptions=False)
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(resumo_router, "load_leads_data", _sem_dados)
-        resposta = client_sem_raise.get("/api/resumo-executivo")
+        resposta = client_sem_raise.get("/api/resumo-executivo", headers=auth_headers(token_gestor))
 
     assert resposta.status_code == 500
 
-    resposta_seguinte = client.get("/api/resumo-executivo")
+    resposta_seguinte = client.get("/api/resumo-executivo", headers=auth_headers(token_gestor))
     assert resposta_seguinte.status_code == 200

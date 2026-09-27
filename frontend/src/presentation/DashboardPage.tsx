@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAnomaliesData } from "../application/useAnomaliesData";
 import { useCatalogo } from "../application/useCatalogo";
 import { useVinShareData } from "../application/useVinShareData";
-import type { VinShareFiltros } from "../domain/types";
+import type { Perfil, VinShareFiltros } from "../domain/types";
 import AcaoPrioritariaKpiCard from "./AcaoPrioritariaKpiCard";
 import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
@@ -34,6 +34,13 @@ function paraCompetencia(dataIso?: string): string | undefined {
   return dataIso?.slice(0, 7);
 }
 
+export interface DashboardPageProps {
+  /** Perfil da sessão logada — `concessionaria` trava o filtro no próprio dealer. */
+  perfil?: Perfil;
+  /** `null`/ausente para perfil `gestor` (sem trava). */
+  dealerCode?: string | null;
+}
+
 /**
  * Página principal do VIN Share Intelligence Hub.
  *
@@ -41,8 +48,12 @@ function paraCompetencia(dataIso?: string): string | undefined {
  * mudanças, e as seções de KPI, gráficos e leads consomem este mesmo estado,
  * garantindo que a tela inteira fale do mesmo recorte de dados.
  */
-export default function DashboardPage() {
-  const [filtros, setFiltros] = useState<VinShareFiltros>({});
+export default function DashboardPage({ perfil, dealerCode }: DashboardPageProps) {
+  const concessionariaTravada = perfil === "concessionaria" ? (dealerCode ?? undefined) : undefined;
+
+  const [filtros, setFiltros] = useState<VinShareFiltros>(
+    concessionariaTravada ? { concessionaria: concessionariaTravada } : {}
+  );
   const { data, loading, error, recarregar } = useVinShareData(filtros);
   const { data: catalogo } = useCatalogo();
 
@@ -89,24 +100,45 @@ export default function DashboardPage() {
     recarregar: recarregarAnomalias
   } = useAnomaliesData();
 
-  const atualizarFiltros = useCallback((alteracao: Partial<VinShareFiltros>) => {
-    setFiltros((atual) => limparVazios({ ...atual, ...alteracao }));
-  }, []);
+  const atualizarFiltros = useCallback(
+    (alteracao: Partial<VinShareFiltros>) => {
+      setFiltros((atual) =>
+        limparVazios({
+          ...atual,
+          ...alteracao,
+          // Perfil concessionaria nunca sai do próprio dealer, mesmo que algo
+          // tente sobrescrever — a API recusaria de qualquer forma (403).
+          ...(concessionariaTravada ? { concessionaria: concessionariaTravada } : {})
+        })
+      );
+    },
+    [concessionariaTravada]
+  );
 
   const limparFiltros = useCallback(() => {
-    setFiltros({});
-  }, []);
+    setFiltros(concessionariaTravada ? { concessionaria: concessionariaTravada } : {});
+  }, [concessionariaTravada]);
 
   /*
    * Atalho vindo do painel de anomalias: aplica o recorte e sobe a página,
    * para quem está assistindo ver o dashboard inteiro reagir ao alerta.
    */
-  const filtrarPelaAnomalia = useCallback((filtro: Partial<VinShareFiltros>) => {
-    setFiltros((atual) => limparVazios({ ...atual, ...filtro }));
+  const filtrarPelaAnomalia = useCallback(
+    (filtro: Partial<VinShareFiltros>) => {
+      // Painel de anomalias não é escopado por dealer (mostra a rede toda);
+      // perfil concessionaria não pode seguir o atalho pra outro dealer —
+      // a API recusaria (403) mesmo se a tela deixasse.
+      if (concessionariaTravada && filtro.concessionaria && filtro.concessionaria !== concessionariaTravada) {
+        return;
+      }
 
-    const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: 0, behavior: suave ? "smooth" : "auto" });
-  }, []);
+      setFiltros((atual) => limparVazios({ ...atual, ...filtro }));
+
+      const suave = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: 0, behavior: suave ? "smooth" : "auto" });
+    },
+    [concessionariaTravada]
+  );
 
   /*
    * Período sozinho não conta como "recorte" pra fins da régua: ele agora vem
@@ -157,6 +189,7 @@ export default function DashboardPage() {
             onChange={atualizarFiltros}
             onLimpar={limparFiltros}
             catalogo={catalogo}
+            concessionariaTravada={Boolean(concessionariaTravada)}
           />
           <ResumoFiltros filtros={filtros} />
         </section>

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { obterSessao } from "./session";
 
 /** Valores aceitos em query string. Arrays viram chaves repetidas. */
 export type QueryParamValue = string | number | boolean | string[] | undefined | null;
@@ -100,17 +101,31 @@ function extrairMensagem(body: string, status: number, statusText: string): stri
   return `Erro ${status}${statusText ? ` (${statusText})` : ""} ao consultar a API.`;
 }
 
-/**
- * GET tipado. Sempre rejeita com `ApiError` — nunca com um erro cru do fetch.
- */
-export async function apiGet<T>(path: string, params?: QueryParams): Promise<T> {
-  const url = buildUrl(path, params);
+/** Headers padrão de toda requisição — anexa `Authorization` quando há sessão ativa. */
+function buildHeaders(comCorpo: boolean): HeadersInit {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (comCorpo) headers["Content-Type"] = "application/json";
+
+  const sessao = obterSessao();
+  if (sessao) headers.Authorization = `Bearer ${sessao.token}`;
+
+  return headers;
+}
+
+/** Núcleo compartilhado por `apiGet`/`apiPost` — sempre rejeita com `ApiError`, nunca com um erro cru do fetch. */
+async function request<T>(
+  method: "GET" | "POST",
+  path: string,
+  options?: { params?: QueryParams; body?: unknown }
+): Promise<T> {
+  const url = buildUrl(path, options?.params);
 
   let resposta: Response;
   try {
     resposta = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "application/json" }
+      method,
+      headers: buildHeaders(options?.body !== undefined),
+      body: options?.body !== undefined ? JSON.stringify(options.body) : undefined
     });
   } catch (erro) {
     throw toApiError(erro, url);
@@ -144,4 +159,14 @@ export async function apiGet<T>(path: string, params?: QueryParams): Promise<T> 
       url
     });
   }
+}
+
+/** GET tipado. */
+export function apiGet<T>(path: string, params?: QueryParams): Promise<T> {
+  return request<T>("GET", path, { params });
+}
+
+/** POST tipado, corpo serializado como JSON. */
+export function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>("POST", path, { body });
 }

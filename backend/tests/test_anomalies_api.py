@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
+from tests.conftest import auth_headers
 
 from src.interfaces.api.main import app
 from src.interfaces.api.routers import anomalies as anomalies_router
@@ -36,10 +37,10 @@ def _limpar_cache_de_anomalias() -> None:
     anomalies_router._anomalias_calculadas.cache_clear()
 
 
-def test_anomalies_retorna_200_com_lista_bem_formada(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_anomalies_retorna_200_com_lista_bem_formada(monkeypatch: pytest.MonkeyPatch, token_gestor: str) -> None:
     monkeypatch.setattr(anomalies_router, "load_vin_share_data", _historico_pequeno)
 
-    resposta = client.get("/api/anomalies")
+    resposta = client.get("/api/anomalies", headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
     corpo = resposta.json()
@@ -50,7 +51,7 @@ def test_anomalies_retorna_200_com_lista_bem_formada(monkeypatch: pytest.MonkeyP
         assert 0.0 <= item["severidade"] <= 1.0
 
 
-def test_anomalies_e_calculado_uma_unica_vez_e_fica_em_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_anomalies_e_calculado_uma_unica_vez_e_fica_em_cache(monkeypatch: pytest.MonkeyPatch, token_gestor: str) -> None:
     chamadas = {"n": 0}
 
     def _carregar_e_contar() -> pd.DataFrame:
@@ -59,42 +60,42 @@ def test_anomalies_e_calculado_uma_unica_vez_e_fica_em_cache(monkeypatch: pytest
 
     monkeypatch.setattr(anomalies_router, "load_vin_share_data", _carregar_e_contar)
 
-    client.get("/api/anomalies")
-    client.get("/api/anomalies")
-    client.get("/api/anomalies")
+    client.get("/api/anomalies", headers=auth_headers(token_gestor))
+    client.get("/api/anomalies", headers=auth_headers(token_gestor))
+    client.get("/api/anomalies", headers=auth_headers(token_gestor))
 
     assert chamadas["n"] == 1
 
 
-def test_anomalies_dataframe_vazio_nao_quebra(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_anomalies_dataframe_vazio_nao_quebra(monkeypatch: pytest.MonkeyPatch, token_gestor: str) -> None:
     monkeypatch.setattr(anomalies_router, "load_vin_share_data", _historico_vazio)
 
-    resposta = client.get("/api/anomalies")
+    resposta = client.get("/api/anomalies", headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
     assert resposta.json() == []
 
 
-def test_anomalies_query_param_desconhecido_e_ignorado(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_anomalies_query_param_desconhecido_e_ignorado(monkeypatch: pytest.MonkeyPatch, token_gestor: str) -> None:
     monkeypatch.setattr(anomalies_router, "load_vin_share_data", _historico_pequeno)
 
-    resposta = client.get("/api/anomalies", params={"paramInexistente": "x"})
+    resposta = client.get("/api/anomalies", params={"paramInexistente": "x"}, headers=auth_headers(token_gestor))
     assert resposta.status_code == 200
 
 
-def test_anomalies_arquivo_de_dados_ausente_nao_derruba_o_processo() -> None:
+def test_anomalies_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     def _sem_dados() -> pd.DataFrame:
         raise FileNotFoundError("Histórico de serviços não encontrado.")
 
     client_sem_raise = TestClient(app, raise_server_exceptions=False)
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(anomalies_router, "load_vin_share_data", _sem_dados)
-        resposta = client_sem_raise.get("/api/anomalies")
+        resposta = client_sem_raise.get("/api/anomalies", headers=auth_headers(token_gestor))
 
     assert resposta.status_code == 500
 
     anomalies_router._anomalias_calculadas.cache_clear()
     with pytest.MonkeyPatch.context() as monkeypatch:
         monkeypatch.setattr(anomalies_router, "load_vin_share_data", _historico_pequeno)
-        resposta_seguinte = client.get("/api/anomalies")
+        resposta_seguinte = client.get("/api/anomalies", headers=auth_headers(token_gestor))
 
     assert resposta_seguinte.status_code == 200

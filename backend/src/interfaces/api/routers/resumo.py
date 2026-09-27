@@ -25,7 +25,7 @@ as concessionárias em alerta, então não recalcula anomalias aqui.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from src.application.resumo_executivo import (
@@ -35,6 +35,7 @@ from src.application.resumo_executivo import (
 )
 from src.infrastructure.leads_repository import load_leads_data
 from src.infrastructure.vin_share_repository import load_vin_share_data
+from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
 from src.interfaces.api.routers.anomalies import _anomalias_calculadas
 
 router = APIRouter()
@@ -65,7 +66,7 @@ class ResumoExecutivo(BaseModel):
 
 
 @router.get("/resumo-executivo", response_model=ResumoExecutivo)
-def get_resumo_executivo() -> ResumoExecutivo:
+def get_resumo_executivo(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> ResumoExecutivo:
     return ResumoExecutivo(
         concessionariasEmAlerta=[
             ConcessionariaEmAlerta(**item) for item in concessionarias_em_alerta(_anomalias_calculadas())

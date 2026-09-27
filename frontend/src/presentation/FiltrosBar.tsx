@@ -13,6 +13,12 @@ export interface FiltrosBarProps {
    * os dropdowns nunca divergem do que a API realmente tem.
    */
   catalogo: Catalogo | null;
+  /**
+   * Perfil `concessionaria`: o seletor de concessionária fica travado no
+   * próprio dealer (a API já recusa qualquer outro com 403 — isso é só a UX
+   * deixar claro antes de tentar).
+   */
+  concessionariaTravada?: boolean;
 }
 
 const OPCOES_FAIXA_IDADE: DropdownOption[] = FAIXAS_IDADE.map((faixa) => ({
@@ -51,7 +57,13 @@ function formatarDataBr(iso: string): string {
  * Todos os filtros são combináveis e escrevem no mesmo estado centralizado
  * em `DashboardPage`; nenhum deles guarda estado próprio.
  */
-export default function FiltrosBar({ filtros, onChange, onLimpar, catalogo }: FiltrosBarProps) {
+export default function FiltrosBar({
+  filtros,
+  onChange,
+  onLimpar,
+  catalogo,
+  concessionariaTravada = false
+}: FiltrosBarProps) {
   const idInicio = useId();
   const idFim = useId();
 
@@ -89,6 +101,7 @@ export default function FiltrosBar({ filtros, onChange, onLimpar, catalogo }: Fi
           value={filtros.concessionaria}
           onChange={(concessionaria) => onChange({ concessionaria })}
           placeholder="Todas"
+          disabled={concessionariaTravada}
         />
 
         <Dropdown

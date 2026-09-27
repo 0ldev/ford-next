@@ -27,10 +27,11 @@ discriminante com os dados atuais.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from src.infrastructure.vin_share_repository import load_vin_share_data
+from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
 
 router = APIRouter()
 
@@ -48,7 +49,7 @@ class CatalogoResponse(BaseModel):
 
 
 @router.get("/catalogo", response_model=CatalogoResponse)
-def get_catalogo() -> CatalogoResponse:
+def get_catalogo(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> CatalogoResponse:
     df = load_vin_share_data()
 
     modelos = sorted(df["ModelName"].dropna().unique().tolist())

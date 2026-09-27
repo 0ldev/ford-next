@@ -203,6 +203,33 @@ body {
   cursor: not-allowed;
 }
 
+/* Botão preenchido — ações de destaque únicas na tela (ex.: submeter o login),
+   diferente de `.botao-secundario` (contorno, usado quando há mais de uma ação). */
+.botao-primario {
+  height: var(--altura-controle);
+  padding: 0 var(--espaco-4);
+  border: 1px solid var(--azul-800);
+  border-radius: var(--raio-sm);
+  background: var(--azul-800);
+  font: inherit;
+  font-size: var(--texto-sm);
+  font-weight: var(--peso-medio);
+  color: var(--branco);
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.botao-primario:hover:not(:disabled) {
+  background: var(--azul-900);
+  border-color: var(--azul-900);
+}
+
+.botao-primario:disabled {
+  background: var(--neutro-400);
+  border-color: var(--neutro-400);
+  cursor: not-allowed;
+}
+
 .botao-link {
   /* Hospeda um .sr-only no atalho da anomalia; sem isto o rótulo se ancora
      no documento e volta a esticar a página. */
@@ -1153,6 +1180,49 @@ body {
 .botao-copiar[data-estado="falhou"] {
   border-color: var(--risco-medio);
   color: var(--risco-medio);
+}
+
+/* Login -------------------------------------------------------------- */
+
+.login-pagina {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--espaco-5);
+}
+
+.login-cartao {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-5);
+  padding: var(--espaco-6);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-md);
+  background: var(--cor-superficie);
+  box-shadow: var(--sombra-card);
+}
+
+.login-marca {
+  margin-bottom: var(--espaco-2);
+}
+
+.login-botao {
+  width: 100%;
+}
+
+.sessao-barra {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--espaco-4);
+  padding: var(--espaco-2) var(--espaco-5);
+  border-bottom: 1px solid var(--cor-borda);
+  background: var(--cor-superficie-sutil);
+  font-size: var(--texto-sm);
+  color: var(--cor-texto-suave);
 }
 
 /* Resumo executivo -------------------------------------------------- */

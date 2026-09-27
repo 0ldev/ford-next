@@ -24,21 +24,97 @@ Clean Architecture nas duas pontas, backend e frontend, com a mesma separação 
 
 ```
 backend/src/
-├── domain/          # regras de negócio puras (risk_label, action_rules, message_templates, prioritization)
+├── domain/          # regras de negócio puras (risk_label, action_rules, message_templates,
+│                    #   prioritization, security — hash/JWT, authorization — escopo por perfil)
 ├── application/      # casos de uso (features, treino do modelo, geração de leads, métricas)
-├── infrastructure/    # acesso a dados (leitura de parquet/CSV, cache, modelo treinado)
+├── infrastructure/    # acesso a dado (leitura de parquet/CSV, cache, modelo treinado,
+│                    #   cadastro de usuários, histórico de contatos)
 └── interfaces/
     ├── pipeline/      # scripts de ETL/treino, rodados offline — nunca dentro de uma requisição HTTP
-    └── api/           # FastAPI — só lê dados já processados pelo pipeline
+    └── api/           # FastAPI — só lê dado já processado pelo pipeline; dependencies.py
+                       #   traduz falha de autenticação/autorização em HTTPException
 
 frontend/src/
 ├── domain/           # tipos/contratos (espelham o schema da API)
-├── application/       # hooks (um por recurso: useVinShareData, useLeads, useCatalogo, ...)
-├── infrastructure/    # cliente HTTP, fonte de dados (mock ↔ API real via USE_MOCK)
-└── presentation/      # componentes React
+├── application/       # hooks (um por recurso: useVinShareData, useLeads, useCatalogo, useLogin, ...)
+├── infrastructure/    # cliente HTTP (anexa o Bearer token), sessão (localStorage),
+│                    #   fonte de dados (mock ↔ API real via USE_MOCK)
+└── presentation/      # componentes React (LoginPage é a porta de entrada; App.tsx decide
+                       #   entre login e dashboard conforme a sessão)
 ```
 
 O ponto central é a separação entre **pipeline** (processamento pesado, rodado por fora, offline) e **API** (camada fina, só serve o que já foi calculado) — o servidor web nunca processa o Excel bruto dentro de uma requisição.
+
+### Diagrama de componentes
+
+```mermaid
+flowchart LR
+    subgraph Frontend["Frontend (React + Vite)"]
+        LP["LoginPage"]
+        DP["DashboardPage\n(gráficos, leads, resumo executivo)"]
+        AC["apiClient\n(anexa Authorization: Bearer)"]
+        SS["session.ts\n(localStorage)"]
+    end
+
+    subgraph Backend["Backend (FastAPI)"]
+        AUTH["/api/auth/login\n(público)"]
+        DEP["dependencies.py\n(valida JWT, resolve escopo por dealer)"]
+        ROUTERS["Routers protegidos\nvin-share · leads · trend\nanomalies · catalogo · resumo · contatos"]
+    end
+
+    subgraph Dados["Dados"]
+        USERS["user_repository\n(usuários seed)"]
+        PROC["data/processed/*.csv\n(saída do pipeline)"]
+        RUNTIME["data/runtime/contatos.csv\n(gerado em runtime)"]
+    end
+
+    PIPE["Pipeline offline\n(build_features → train_model → generate_leads)"]
+
+    LP -- "usuário/senha" --> AC
+    AC -- "POST /api/auth/login" --> AUTH
+    AUTH --> USERS
+    AUTH -- "token JWT" --> SS
+    DP -- "GET/POST + Bearer" --> AC
+    AC --> ROUTERS
+    ROUTERS --> DEP
+    DEP -- "401/403" --> AC
+    ROUTERS --> PROC
+    ROUTERS --> RUNTIME
+    PIPE --> PROC
+```
+
+### Fluxo de autenticação (sequência)
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant A as POST /api/auth/login
+    participant D as dependencies.py
+    participant R as Router protegido
+
+    U->>F: usuário + senha
+    F->>A: POST /api/auth/login
+    A->>A: verifica hash da senha
+    alt credenciais inválidas
+        A-->>F: 401 {detail, codigo}
+    else credenciais corretas
+        A-->>F: 200 {token, perfil, dealerCode, expiraEm}
+        F->>F: salva sessão (localStorage)
+    end
+
+    U->>F: navega o dashboard
+    F->>R: GET /api/leads (Authorization: Bearer <token>)
+    R->>D: obter_usuario_atual(token)
+    alt token ausente/inválido/expirado
+        D-->>F: 401
+    else token válido, perfil concessionaria pedindo outro dealer
+        D-->>F: 403
+    else token válido, escopo ok
+        D-->>R: usuário autenticado
+        R-->>F: 200 {leads, total, ...}
+    end
+```
 
 ## Como rodar localmente
 
@@ -67,7 +143,17 @@ O dataset bruto (`data/raw/vin_share.zip`) já está versionado no repositório 
 .venv/bin/python -m uvicorn src.interfaces.api.main:app --port 8000
 ```
 
-Endpoints: `/health`, `/api/vin-share`, `/api/trend`, `/api/anomalies`, `/api/leads`, `/api/leads/{vin}/acao`, `/api/catalogo`.
+Documentação interativa (Swagger UI, com botão "Authorize" para colar o Bearer token): `http://localhost:8000/docs`. Especificação OpenAPI crua: `/openapi.json`.
+
+| Endpoint | Público? | Observação |
+|---|---|---|
+| `GET /health` | sim | |
+| `POST /api/auth/login` | sim | único jeito de obter um token |
+| `GET /api/vin-share` | não | perfil `concessionaria` escopado no próprio dealer |
+| `GET /api/trend`, `GET /api/trend/concessionarias` | não | a segunda é escopada por dealer |
+| `GET /api/anomalies`, `GET /api/catalogo`, `GET /api/resumo-executivo`, `GET /api/leads/distribuicao-score` | não | agregados de rede, sem escopo por dealer |
+| `GET /api/leads`, `GET /api/leads/{vin}/acao` | não | escopados por dealer |
+| `POST`/`GET /api/leads/{vin}/contatos` | não | registra/lista contato feito com o VIN; escopado por dealer |
 
 ### 4. Frontend
 
@@ -77,12 +163,33 @@ npm install
 npm run dev
 ```
 
-Abre em `http://localhost:5173` — o Vite faz proxy de `/api` para `localhost:8000`. `USE_MOCK` em `frontend/src/infrastructure/config.ts` está `false` (API real); mude para `true` para rodar o dashboard sem o backend no ar.
+Abre em `http://localhost:5173` — o Vite faz proxy de `/api` para `localhost:8000`. `USE_MOCK` em `frontend/src/infrastructure/config.ts` está `false` (API real); mude para `true` para rodar o dashboard sem o backend no ar (o login também funciona no modo mock, com os mesmos usuários de demonstração).
+
+## Autenticação e perfis de acesso
+
+Toda a API (exceto `/health` e `/api/auth/login`) exige `Authorization: Bearer <token>`, obtido em `POST /api/auth/login`. Dois perfis:
+
+| Perfil | Usuário demo | Senha | Acesso |
+|---|---|---|---|
+| `gestor` | `gestor` | `gestor123` | rede inteira, sem restrição |
+| `concessionaria` | `concessionaria6693` | `dealer123` | só o dealer `6693` — pedir outro dealer devolve `403` |
+
+```bash
+# login
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"usuario": "gestor", "senha": "gestor123"}'
+
+# usa o token retornado
+curl http://localhost:8000/api/leads -H "Authorization: Bearer <token>"
+```
+
+Token JWT (HS256), expira em 60 minutos (`backend/src/domain/security.py`). Segredo de assinatura via variável de ambiente `JWT_SECRET` — sem ela, cai num valor de desenvolvimento (não usar assim em produção). Regras de escopo por perfil em `backend/src/domain/authorization.py`.
 
 ## Testes
 
 ```bash
-# Backend (271+ testes)
+# Backend (357+ testes, incluindo autenticação/autorização/JWT)
 cd backend && .venv/bin/python -m pytest tests/ -q
 
 # Frontend

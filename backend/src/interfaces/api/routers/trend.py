@@ -39,11 +39,12 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from src.application.trend_metrics import compute_trend, compute_trend_concessionaria
 from src.infrastructure.vin_share_repository import load_vin_share_data
+from src.interfaces.api.dependencies import UsuarioAutenticado, escopar_concessionarias, obter_usuario_atual
 
 router = APIRouter()
 
@@ -61,6 +62,7 @@ def get_trend(
     modelo: Annotated[list[str] | None, Query(description="ModelName; repetível, ausente = todos")] = None,
     periodoInicio: Annotated[str | None, Query(pattern=_PADRAO_COMPETENCIA, description='Competência "YYYY-MM"')] = None,
     periodoFim: Annotated[str | None, Query(pattern=_PADRAO_COMPETENCIA, description='Competência "YYYY-MM"')] = None,
+    usuario: UsuarioAutenticado = Depends(obter_usuario_atual),
 ) -> list[TrendPoint]:
     df = load_vin_share_data()
 
@@ -85,7 +87,11 @@ def get_trend_concessionarias(
     minVeiculos: Annotated[
         int, Query(ge=0, description="Piso de VINs elegíveis; ignorado se `concessionaria` for informado")
     ] = 0,
+    usuario: UsuarioAutenticado = Depends(obter_usuario_atual),
 ) -> list[TrendPoint]:
+    # Perfil "concessionaria" so' ve o proprio dealer, mesmo pedindo a lista toda.
+    concessionaria = escopar_concessionarias(usuario, concessionaria)
+
     df = load_vin_share_data()
 
     try:

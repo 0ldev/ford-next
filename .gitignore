@@ -16,6 +16,11 @@ backend/data/processed/*
 backend/models/*
 !backend/models/.gitkeep
 
+# Dado gerado em runtime pela própria API (não pelo pipeline) — ex.: histórico
+# de contatos registrados via POST /api/leads/{vin}/contatos.
+backend/data/runtime/*
+!backend/data/runtime/.gitkeep
+
 # Node / frontend
 node_modules/
 dist/

@@ -17,11 +17,13 @@ import type {
   AnomaliesResponse,
   Anomaly,
   Catalogo,
+  CredenciaisLogin,
   Lead,
   LeadsFiltros,
   LeadsResponse,
   ResumoExecutivo,
   ScoreDistributionResponse,
+  Sessao,
   TrendConcessionariaFiltros,
   TrendConcessionariaResponse,
   TrendFiltros,
@@ -29,6 +31,7 @@ import type {
   VinShareFiltros,
   VinShareResponse
 } from "../domain/types";
+import { ApiError } from "./apiClient";
 
 /* ------------------------------------------------------------------ */
 /* Catálogos (também usados pela barra de filtros)                     */
@@ -607,4 +610,33 @@ export function mockResumoExecutivo(): ResumoExecutivo {
       { competencia: "2024-09", vinShareRede: 4.2 }
     ]
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* POST /api/auth/login                                                */
+/* ------------------------------------------------------------------ */
+
+/** Mesmas credenciais de demonstração do backend (`infrastructure/user_repository.py`). */
+const USUARIOS_MOCK: Record<string, { senha: string; sessao: Omit<Sessao, "expiraEm"> }> = {
+  gestor: { senha: "gestor123", sessao: { token: "mock-token-gestor", perfil: "gestor", dealerCode: null } },
+  concessionaria6693: {
+    senha: "dealer123",
+    sessao: { token: "mock-token-concessionaria6693", perfil: "concessionaria", dealerCode: "6693" }
+  }
+};
+
+/** Lança `ApiError` (401) em credenciais inválidas — mesmo formato de falha da API real. */
+export function mockLogin(credenciais: CredenciaisLogin): Sessao {
+  const registro = USUARIOS_MOCK[credenciais.usuario];
+
+  if (!registro || registro.senha !== credenciais.senha) {
+    throw new ApiError({
+      message: "Usuário ou senha inválidos.",
+      status: 401,
+      kind: "http",
+      url: "/api/auth/login"
+    });
+  }
+
+  return { ...registro.sessao, expiraEm: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
 }

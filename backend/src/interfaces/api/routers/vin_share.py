@@ -27,17 +27,22 @@ Query params, todos opcionais e combinaveis (mesmos nomes de
 
 Ver `application.vin_share_metrics.compute_vin_share` para a definicao exata de
 "elegivel" vs. "com servico" (a semantica de `concessionaria` em particular).
+
+Protegido: exige `Authorization: Bearer <token>` (ver `interfaces.api.routers.auth`).
+Perfil `concessionaria` é auto-escopado pro próprio `dealerCode` — ver
+`interfaces.api.dependencies.escopar_concessionaria`.
 """
 from __future__ import annotations
 
 from datetime import date
 
 import pandas as pd
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from src.application.vin_share_metrics import FaixaIdade, compute_vin_share
 from src.infrastructure.vin_share_repository import load_vin_share_data
+from src.interfaces.api.dependencies import UsuarioAutenticado, escopar_concessionaria, obter_usuario_atual
 
 router = APIRouter()
 
@@ -57,7 +62,12 @@ def get_vin_share(
     tipoServico: str | None = Query(None, description="ServiceType"),
     periodoInicio: date | None = Query(None, description="Data ISO, limite inferior (inclusivo)"),
     periodoFim: date | None = Query(None, description="Data ISO, limite superior (inclusivo)"),
+    usuario: UsuarioAutenticado = Depends(obter_usuario_atual),
 ) -> VinShareResponse:
+    # Perfil "concessionaria" nunca ve a rede toda: sem filtro pedido, e' auto-
+    # escopado pro proprio dealer; pedindo outro dealer, 403 (ver dependencies.py).
+    concessionaria = escopar_concessionaria(usuario, concessionaria)
+
     df = load_vin_share_data()
 
     resultado = compute_vin_share(

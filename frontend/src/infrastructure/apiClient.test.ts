@@ -1,5 +1,26 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet, buildQueryString, toApiError } from "./apiClient";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Sessao } from "../domain/types";
+import { ApiError, apiGet, apiPost, buildQueryString, toApiError } from "./apiClient";
+import { limparSessao, salvarSessao } from "./session";
+
+/** Ambiente de teste é Node puro (sem jsdom): stub em memória pro `localStorage` que `session.ts` usa. */
+function criarLocalStorageStub(): Storage {
+  const dados = new Map<string, string>();
+  return {
+    getItem: (chave: string) => dados.get(chave) ?? null,
+    setItem: (chave: string, valor: string) => {
+      dados.set(chave, valor);
+    },
+    removeItem: (chave: string) => {
+      dados.delete(chave);
+    },
+    clear: () => dados.clear(),
+    key: (indice: number) => [...dados.keys()][indice] ?? null,
+    get length() {
+      return dados.size;
+    }
+  } as Storage;
+}
 
 /** Substitui o fetch global por um duplo controlado pelo teste. */
 function mockarFetch(implementacao: () => Promise<Response>): void {
@@ -19,7 +40,27 @@ function urlChamada(): string {
   return String(chamada[0]);
 }
 
+/** `init.headers` efetivamente passado na primeira invocação do fetch mockado. */
+function headersChamados(): Headers {
+  const chamada = vi.mocked(fetch).mock.calls[0];
+  return new Headers(chamada[1]?.headers);
+}
+
+function sessaoDeTeste(): Sessao {
+  return {
+    token: "token-abc123",
+    perfil: "gestor",
+    dealerCode: null,
+    expiraEm: new Date(Date.now() + 60_000).toISOString()
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", criarLocalStorageStub());
+});
+
 afterEach(() => {
+  limparSessao();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -112,6 +153,56 @@ describe("apiGet", () => {
 
     expect(erro).toBeInstanceOf(ApiError);
     expect(erro.kind).toBe("parse");
+  });
+});
+
+describe("apiGet — Authorization", () => {
+  it("não envia Authorization sem sessão ativa", async () => {
+    mockarFetch(async () => respostaJson({}));
+    await apiGet("/catalogo");
+
+    expect(headersChamados().has("Authorization")).toBe(false);
+  });
+
+  it("envia Authorization: Bearer <token> com sessão ativa", async () => {
+    salvarSessao(sessaoDeTeste());
+    mockarFetch(async () => respostaJson({}));
+    await apiGet("/catalogo");
+
+    expect(headersChamados().get("Authorization")).toBe("Bearer token-abc123");
+  });
+});
+
+describe("apiPost", () => {
+  it("envia o corpo serializado como JSON e devolve o JSON tipado da resposta", async () => {
+    mockarFetch(async () => respostaJson({ token: "novo-token" }));
+
+    const resultado = await apiPost<{ token: string }>("/auth/login", { usuario: "gestor", senha: "gestor123" });
+
+    expect(resultado).toEqual({ token: "novo-token" });
+    const chamada = vi.mocked(fetch).mock.calls[0];
+    expect(chamada[1]?.method).toBe("POST");
+    expect(chamada[1]?.body).toBe(JSON.stringify({ usuario: "gestor", senha: "gestor123" }));
+    expect(headersChamados().get("Content-Type")).toBe("application/json");
+  });
+
+  it("também anexa Authorization quando há sessão ativa", async () => {
+    salvarSessao(sessaoDeTeste());
+    mockarFetch(async () => respostaJson({}));
+
+    await apiPost("/leads/v1/contatos", { acao: "oferta" });
+
+    expect(headersChamados().get("Authorization")).toBe("Bearer token-abc123");
+  });
+
+  it("lança ApiError tratável quando a resposta não é 2xx", async () => {
+    mockarFetch(async () => respostaJson({ detail: "Usuário ou senha inválidos." }, 401));
+
+    const erro = (await apiPost("/auth/login", { usuario: "x", senha: "y" }).catch((e: unknown) => e)) as ApiError;
+
+    expect(erro).toBeInstanceOf(ApiError);
+    expect(erro.status).toBe(401);
+    expect(erro.message).toBe("Usuário ou senha inválidos.");
   });
 });
 

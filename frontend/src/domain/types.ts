@@ -8,6 +8,27 @@
  */
 
 /* ------------------------------------------------------------------ */
+/* POST /api/auth/login                                                */
+/* ------------------------------------------------------------------ */
+
+export type Perfil = "gestor" | "concessionaria";
+
+export interface CredenciaisLogin {
+  usuario: string;
+  senha: string;
+}
+
+/** Resposta de `POST /api/auth/login` — o que persiste em `infrastructure/session.ts`. */
+export interface Sessao {
+  token: string;
+  perfil: Perfil;
+  /** `null` para perfil `gestor` (acesso à rede toda). */
+  dealerCode: string | null;
+  /** ISO 8601 — quando o token expira. */
+  expiraEm: string;
+}
+
+/* ------------------------------------------------------------------ */
 /* GET /api/vin-share                                                  */
 /* ------------------------------------------------------------------ */
 
