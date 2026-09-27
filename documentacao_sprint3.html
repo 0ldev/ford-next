@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>VIN Share Intelligence Hub — Sprint 3</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    color: #151a29;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    margin: 0;
+  }
+  .capa {
+    height: 265mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    page-break-after: always;
+  }
+  .capa .selo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 90px;
+    height: 46px;
+    border-radius: 999px;
+    background: #00095b;
+    color: #fff;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 28px;
+  }
+  .capa h1 { font-size: 26pt; margin: 0 0 6px; color: #00095b; }
+  .capa h2 { font-size: 13pt; font-weight: 500; color: #4a5266; margin: 0 0 30px; }
+  .capa .meta { font-size: 10pt; color: #6b7280; }
+  .capa .rubrica {
+    margin-top: 40px;
+    border-left: 3px solid #00095b;
+    padding-left: 14px;
+    color: #4a5266;
+    font-size: 9.5pt;
+  }
+
+  h2.secao {
+    font-size: 14pt;
+    color: #00095b;
+    border-bottom: 2px solid #00095b;
+    padding-bottom: 4px;
+    margin: 26px 0 4px;
+    page-break-after: avoid;
+  }
+  h2.secao .peso {
+    float: right;
+    font-size: 9pt;
+    font-weight: 600;
+    color: #fff;
+    background: #00095b;
+    padding: 2px 10px;
+    border-radius: 999px;
+  }
+  h3.criterio {
+    font-size: 10.5pt;
+    color: #00095b;
+    margin: 14px 0 4px;
+    page-break-after: avoid;
+  }
+  h3.criterio::before { content: "✓ "; color: #1a7f37; }
+
+  p { margin: 4px 0 8px; }
+  ul, ol { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin-bottom: 2px; }
+
+  code, .mono {
+    font-family: "Consolas", "SFMono-Regular", Menlo, monospace;
+    font-size: 9pt;
+    background: #f1f3f9;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  pre {
+    background: #151a29;
+    color: #eef1f8;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: "Consolas", monospace;
+    font-size: 8.5pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    margin: 6px 0 10px;
+  }
+  pre .c1 { color: #8b95ab; }
+
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-size: 9.5pt; }
+  th, td { border: 1px solid #d7dce5; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #eef1f8; color: #00095b; }
+  tr:nth-child(even) td { background: #fafbfd; }
+
+  .nota {
+    background: #fff8ec;
+    border-left: 3px solid #b5860b;
+    padding: 6px 10px;
+    font-size: 9.5pt;
+    margin: 8px 0;
+  }
+
+  .diagram { margin: 10px 0 16px; }
+  .d-row { display: flex; gap: 8px; justify-content: center; margin: 0; }
+  .d-box {
+    border: 1.5px solid #00095b;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 8.8pt;
+    background: #f5f7fc;
+    flex: 1;
+  }
+  .d-box strong { display: block; color: #00095b; font-size: 9.3pt; margin-bottom: 3px; }
+  .d-box.d-frontend { background: #eef1f8; }
+  .d-box.d-api { background: #e6ebf7; }
+  .d-box.d-domain { background: #fdf3e7; }
+  .d-box.d-application { background: #eaf3ea; }
+  .d-box.d-infra { background: #f3e9ee; }
+  .d-box.d-data { background: #f1f3f9; }
+  .d-arrow { text-align: center; font-size: 12pt; color: #00095b; margin: 2px 0; }
+  .d-arrow .label { display: block; font-size: 7.8pt; color: #6b7280; }
+
+  ol.flow { counter-reset: passo; list-style: none; padding-left: 0; }
+  ol.flow li {
+    counter-increment: passo;
+    position: relative;
+    padding: 6px 10px 6px 34px;
+    margin-bottom: 4px;
+    background: #f5f7fc;
+    border-radius: 5px;
+    font-size: 9.5pt;
+  }
+  ol.flow li::before {
+    content: counter(passo);
+    position: absolute;
+    left: 8px; top: 6px;
+    width: 18px; height: 18px;
+    background: #00095b;
+    color: #fff;
+    border-radius: 50%;
+    font-size: 8.5pt;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .status { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 8.3pt; font-weight: 700; }
+  .s200 { background: #e3f5e7; color: #1a7f37; }
+  .s401, .s403 { background: #fdeee7; color: #b5480f; }
+  .s404, .s422 { background: #fdf3e7; color: #8a5a00; }
+  .s500 { background: #fbe7e9; color: #b0242e; }
+
+  .grid2 { display: flex; gap: 14px; }
+  .grid2 > div { flex: 1; }
+
+  .rodape { margin-top: 24px; font-size: 8.5pt; color: #9aa2b5; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="capa">
+  <span class="selo">Ford</span>
+  <h1>VIN Share Intelligence Hub</h1>
+  <h2>Sprint 3 — Arquitetura Orientada a Serviços e Web Services</h2>
+  <p class="meta">Documentação técnica · autenticação, autorização, JWT, maturidade REST,<br>testes automatizados e tratamento de erros</p>
+  <div class="rubrica">
+    Estrutura deste documento espelha os critérios de avaliação da sprint:<br>
+    Arquitetura (20%) · Autenticação e Autorização (20%) · JWT (15%) ·<br>
+    Maturidade REST Nível 2 (20%) · Testes Automatizados (15%) · Documentação e Erros (10%)
+  </div>
+</div>
+
+<!-- ========================================================= -->
+<h2 class="secao">1. Arquitetura da Solução <span class="peso">20%</span></h2>
+
+<h3 class="criterio">Diagrama com os principais componentes e responsabilidades</h3>
+<div class="diagram">
+  <div class="d-row">
+    <div class="d-box d-frontend">
+      <strong>Frontend — React + Vite</strong>
+      LoginPage (autenticação) · DashboardPage (dados) · apiClient (anexa <span class="mono">Authorization: Bearer</span>) · session.ts (localStorage)
+    </div>
+  </div>
+  <div class="d-arrow">↓<span class="label">HTTPS · JSON · Authorization: Bearer &lt;token&gt;</span></div>
+  <div class="d-row">
+    <div class="d-box d-api">
+      <strong>Backend — FastAPI (interfaces/api)</strong>
+      <span class="mono">auth.py</span> (público) · routers protegidos: vin-share, leads (+ contatos), trend, anomalies, catalogo, resumo · <span class="mono">dependencies.py</span> valida token e resolve escopo por perfil
+    </div>
+  </div>
+  <div class="d-arrow">↓</div>
+  <div class="d-row" style="gap:8px">
+    <div class="d-box d-domain"><strong>domain/</strong>regras puras: security (hash/JWT), authorization (escopo por perfil), risk_label, action_rules, prioritization</div>
+    <div class="d-box d-application"><strong>application/</strong>casos de uso: métricas de VIN Share/tendência, geração de leads, resumo executivo</div>
+    <div class="d-box d-infra"><strong>infrastructure/</strong>acesso a dado: CSV/parquet, user_repository (usuários), contatos_repository</div>
+  </div>
+  <div class="d-arrow">↓</div>
+  <div class="d-row">
+    <div class="d-box d-data"><strong>Dados</strong><span class="mono">data/processed/*.csv</span> (saída do pipeline offline) · <span class="mono">data/runtime/contatos.csv</span> (gerado em runtime pela API)</div>
+  </div>
+</div>
+
+<h3 class="criterio">Organização e separação clara de responsabilidades</h3>
+<p>Clean Architecture nas duas pontas, mesma separação de camadas — cada uma só conhece a de baixo:</p>
+<table>
+  <tr><th>Camada</th><th>Backend</th><th>Frontend</th></tr>
+  <tr><td><b>domain</b></td><td>Regra pura, sem I/O: hash de senha e JWT (<span class="mono">security.py</span>), escopo por perfil (<span class="mono">authorization.py</span>), score de risco, ação recomendada</td><td>Tipos/contratos que espelham o schema da API</td></tr>
+  <tr><td><b>application</b></td><td>Casos de uso: compõe domain + infrastructure (métricas, geração de leads)</td><td>Hooks (um por recurso): <span class="mono">useLogin</span>, <span class="mono">useLeads</span>, <span class="mono">useCatalogo</span>...</td></tr>
+  <tr><td><b>infrastructure</b></td><td>Acesso a dado: leitura de CSV com cache, cadastro de usuários, histórico de contatos</td><td>Cliente HTTP (<span class="mono">apiClient</span>), sessão (<span class="mono">session.ts</span>), mock ↔ API real</td></tr>
+  <tr><td><b>interfaces/presentation</b></td><td>FastAPI: só valida entrada, delega e formata saída — nenhuma regra de negócio aqui</td><td>Componentes React (LoginPage, DashboardPage, gráficos, tabela de leads)</td></tr>
+</table>
+<p>Pipeline (ETL/treino do modelo) roda <b>offline</b>, por fora da API — o servidor web nunca processa o dataset bruto dentro de uma requisição HTTP.</p>
+
+<h3 class="criterio">Fluxo de comunicação e autenticação da solução</h3>
+<ol class="flow">
+  <li><b>Login</b> — <span class="mono">POST /api/auth/login</span> com <span class="mono">{usuario, senha}</span> (único endpoint de dado público, além de <span class="mono">/health</span>)</li>
+  <li><b>Validação da senha</b> — o servidor confere o hash (PBKDF2-HMAC-SHA256 + salt); nunca compara texto puro</li>
+  <li><b>Emissão do token</b> — <span class="status s200">200</span> com <span class="mono">{token, perfil, dealerCode, expiraEm}</span>; o front salva a sessão em <span class="mono">localStorage</span></li>
+  <li><b>Requisições seguintes</b> — todo <span class="mono">apiGet</span>/<span class="mono">apiPost</span> do front anexa automaticamente <span class="mono">Authorization: Bearer &lt;token&gt;</span></li>
+  <li><b>Validação do token</b> — <span class="mono">dependencies.py::obter_usuario_atual</span> decodifica e verifica assinatura/expiração a cada requisição</li>
+  <li><b>Autorização por perfil</b> — <span class="mono">domain/authorization.py</span> resolve o escopo: <span class="mono">gestor</span> passa livre; <span class="mono">concessionaria</span> só acessa o próprio <span class="mono">dealerCode</span>, senão <span class="status s403">403</span></li>
+</ol>
+
+<!-- ========================================================= -->
+<h2 class="secao">2. Autenticação e Autorização <span class="peso">20%</span></h2>
+
+<h3 class="criterio">Implementação de autenticação e controle de acesso</h3>
+<p>Autenticação via usuário/senha → JWT (ver seção 3). Controle de acesso via <b>2 perfis</b>, aplicado como dependência do FastAPI (<span class="mono">Depends(obter_usuario_atual)</span>) em todo endpoint de dado:</p>
+<table>
+  <tr><th>Perfil</th><th>Usuário demo</th><th>Senha</th><th>Acesso</th></tr>
+  <tr><td><b>gestor</b></td><td class="mono">gestor</td><td class="mono">gestor123</td><td>Rede inteira, sem restrição</td></tr>
+  <tr><td><b>concessionaria</b></td><td class="mono">concessionaria6693</td><td class="mono">dealer123</td><td>Só o dealer <span class="mono">6693</span> — pedir outro dealer devolve <span class="status s403">403</span></td></tr>
+</table>
+<p class="nota"><b>Reforço server-side, não só de UI:</b> o seletor de concessionária na tela vem travado no próprio dealer, mas isso é só cortesia visual — o backend deriva a identidade do <b>token JWT assinado</b>, não de nada que o cliente informe. Chamar a API direto (curl/DevTools) pedindo outro dealer é recusado do mesmo jeito. Testado e confirmado em <span class="mono">/vin-share</span>, <span class="mono">/leads</span>, <span class="mono">/leads/{vin}/acao</span>, <span class="mono">/trend/concessionarias</span>, <span class="mono">/anomalies</span>, <span class="mono">/catalogo</span> e <span class="mono">/resumo-executivo</span>.</p>
+
+<h3 class="criterio">Endpoints públicos e protegidos</h3>
+<table>
+  <tr><th>Endpoint</th><th>Público?</th><th>Observação</th></tr>
+  <tr><td class="mono">GET /health</td><td>sim</td><td>health check</td></tr>
+  <tr><td class="mono">POST /api/auth/login</td><td>sim</td><td>único jeito de obter um token</td></tr>
+  <tr><td class="mono">GET /api/vin-share</td><td>não</td><td>escopado por dealer</td></tr>
+  <tr><td class="mono">GET /api/trend, /trend/concessionarias</td><td>não</td><td>a segunda é escopada por dealer</td></tr>
+  <tr><td class="mono">GET /api/anomalies</td><td>não</td><td>concessionaria só vê queda/pico do próprio dealer; gap_modelo continua completo</td></tr>
+  <tr><td class="mono">GET /api/catalogo</td><td>não</td><td>concessionaria só vê o próprio código</td></tr>
+  <tr><td class="mono">GET /api/resumo-executivo</td><td>não</td><td>alertas escopados por dealer; agregados de modelo/mês continuam completos</td></tr>
+  <tr><td class="mono">GET /api/leads, /leads/{vin}/acao, /leads/distribuicao-score</td><td>não</td><td>escopados por dealer</td></tr>
+  <tr><td class="mono">POST/GET /api/leads/{vin}/contatos</td><td>não</td><td>registra/lista contato; escopado por dealer</td></tr>
+</table>
+
+<h3 class="criterio">Diferentes perfis ou permissões de acesso</h3>
+<p>A distinção não é decorativa: <span class="mono">gestor</span> e <span class="mono">concessionaria</span> recebem <b>dados diferentes</b> da mesma chamada. Regra centralizada e pura em <span class="mono">domain/authorization.py</span> (testável isoladamente, sem precisar subir a API):</p>
+<pre>resolver_escopo_concessionaria(perfil, dealer_code_usuario, concessionaria_solicitada)
+verificar_acesso_ao_dealer(perfil, dealer_code_usuario, dealer_code_alvo)
+filtrar_concessionarias_visiveis(perfil, dealer_code_usuario, todas)
+filtrar_anomalias_por_perfil(perfil, dealer_code_usuario, anomalias)</pre>
+
+<!-- ========================================================= -->
+<h2 class="secao">3. JWT <span class="peso">15%</span></h2>
+
+<h3 class="criterio">Geração e validação de JWT</h3>
+<p>Biblioteca <span class="mono">PyJWT</span>, algoritmo <b>HS256</b>. Geração e validação isoladas em <span class="mono">domain/security.py</span>:</p>
+<pre>criar_token(usuario, perfil, dealer_code) -&gt; (token, expira_em)
+decodificar_token(token) -&gt; TokenPayload  <span class="c1"># levanta TokenInvalidoError se inválido</span></pre>
+<p>Claims: <span class="mono">sub</span> (usuário), <span class="mono">perfil</span>, <span class="mono">dealerCode</span> (<span class="mono">null</span> para gestor), <span class="mono">iat</span>/<span class="mono">exp</span>.</p>
+
+<h3 class="criterio">Proteção dos recursos utilizando token</h3>
+<p><span class="mono">HTTPBearer</span> como security scheme do FastAPI + <span class="mono">Depends(obter_usuario_atual)</span> em <b>todo</b> endpoint de dado — token ausente, malformado ou com assinatura inválida vira <span class="status s401">401</span> antes de qualquer lógica de negócio rodar. Isso também registra o esquema no OpenAPI, habilitando o botão <b>"Authorize"</b> no Swagger (ver seção 6).</p>
+
+<h3 class="criterio">Expiração e uso adequado das informações do token</h3>
+<ul>
+  <li><b>Expira em 60 minutos</b> (<span class="mono">JWT_EXPIRA_MINUTOS</span>) — token expirado é rejeitado com <span class="status s401">401</span>, testado com token gerado com expiração negativa.</li>
+  <li><b>Segredo de assinatura</b> via variável de ambiente <span class="mono">JWT_SECRET</span> (fallback de desenvolvimento, documentado como inseguro para produção).</li>
+  <li><b>Senha nunca em texto puro</b>: PBKDF2-HMAC-SHA256 (600.000 iterações) + salt aleatório por usuário, comparação com <span class="mono">secrets.compare_digest</span> (evita timing attack).</li>
+  <li><b>dealerCode vem do claim assinado</b>, não de nada que o cliente envie — impossível de forjar sem quebrar a assinatura HMAC.</li>
+</ul>
+
+<!-- ========================================================= -->
+<h2 class="secao">4. Maturidade REST — Nível 2 <span class="peso">20%</span></h2>
+
+<h3 class="criterio">APIs orientadas a recursos</h3>
+<p>URLs são substantivos (recursos), não verbos: <span class="mono">/leads</span>, <span class="mono">/leads/{vin}/acao</span>, <span class="mono">/leads/{vin}/contatos</span>, <span class="mono">/vin-share</span>, <span class="mono">/trend/concessionarias</span>, <span class="mono">/anomalies</span>, <span class="mono">/catalogo</span>, <span class="mono">/resumo-executivo</span>, <span class="mono">/auth/login</span>. O recurso <span class="mono">/leads/{vin}/contatos</span> foi adicionado nesta sprint especificamente para demonstrar um recurso com <b>estado</b> (registro persistido), não só leitura.</p>
+
+<h3 class="criterio">Uso adequado dos métodos HTTP</h3>
+<table>
+  <tr><th>Verbo</th><th>Uso</th></tr>
+  <tr><td class="mono">GET</td><td>toda leitura — nunca muda estado no servidor</td></tr>
+  <tr><td class="mono">POST</td><td><span class="mono">/auth/login</span> (gera uma sessão) e <span class="mono">/leads/{vin}/contatos</span> (cria um registro de contato, persistido em CSV)</td></tr>
+</table>
+
+<h3 class="criterio">Status codes coerentes com cada operação</h3>
+<table>
+  <tr><th>Código</th><th>Quando</th></tr>
+  <tr><td><span class="status s200">200</span></td><td>leitura ou login com sucesso</td></tr>
+  <tr><td><span class="status s200" style="background:#e3f5e7">201</span></td><td><span class="mono">POST /leads/{vin}/contatos</span> — recurso criado</td></tr>
+  <tr><td><span class="status s401">401</span></td><td>sem token, token inválido/expirado, credenciais de login erradas</td></tr>
+  <tr><td><span class="status s403">403</span></td><td>token válido, mas perfil concessionaria pedindo dado de outro dealer</td></tr>
+  <tr><td><span class="status s404">404</span></td><td>VIN inexistente na lista de leads</td></tr>
+  <tr><td><span class="status s422">422</span></td><td>validação de query/body (ex.: <span class="mono">scoreMinimo</span> fora de 0–1, período mal formatado)</td></tr>
+  <tr><td><span class="status s500">500</span></td><td>erro não tratado — padronizado, nunca vaza stack trace ao cliente</td></tr>
+</table>
+
+<!-- ========================================================= -->
+<h2 class="secao">5. Testes Automatizados <span class="peso">15%</span></h2>
+
+<h3 class="criterio">Testes dos principais comportamentos da API</h3>
+<p><b>369 testes de backend</b> (pytest + <span class="mono">FastAPI TestClient</span>), incluindo os novos, focados em autenticação/autorização:</p>
+<table>
+  <tr><th>Arquivo</th><th>Cobre</th></tr>
+  <tr><td class="mono">test_security.py</td><td>hash/verificação de senha, geração/decodificação de JWT, token expirado/adulterado/forjado</td></tr>
+  <tr><td class="mono">test_authorization.py</td><td>regras puras de escopo por perfil (gestor vs. concessionaria) em isolamento</td></tr>
+  <tr><td class="mono">test_auth_api.py</td><td><span class="mono">POST /auth/login</span> de ponta a ponta</td></tr>
+  <tr><td class="mono">test_contatos_api.py</td><td>o novo recurso de escrita (<span class="mono">POST</span>/<span class="mono">GET /leads/{vin}/contatos</span>)</td></tr>
+  <tr><td>demais arquivos de API</td><td>atualizados para autenticar (fixtures <span class="mono">token_gestor</span>/<span class="mono">token_concessionaria</span> em <span class="mono">conftest.py</span>) + casos de escopo</td></tr>
+</table>
+
+<h3 class="criterio">Cenários de sucesso, erro e acesso não autorizado</h3>
+<div class="grid2">
+<div>
+<pre>✓ sucesso
+login correto → 200 + token
+GET /leads com token → 200
+POST /leads/{vin}/contatos → 201
+
+✗ erro
+senha errada → 401
+usuário inexistente → 401
+VIN inexistente → 404
+scoreMinimo=1.5 → 422</pre>
+</div>
+<div>
+<pre>⛔ não autorizado
+sem header Authorization → 401
+token malformado/adulterado → 401
+token expirado → 401
+concessionaria pedindo
+  outro dealer → 403</pre>
+</div>
+</div>
+
+<h3 class="criterio">Evidência da execução e resultado dos testes</h3>
+<pre><span class="c1">$ cd backend &amp;&amp; .venv/Scripts/python -m pytest -q</span>
+........................................................................ [ 19%]
+........................................................................ [ 39%]
+........................................................................ [ 58%]
+........................................................................ [ 78%]
+........................................................................ [ 97%]
+.........                                                                [100%]
+<span class="c1">369 passed, 3 warnings in 12.81s</span>
+
+<span class="c1">$ cd frontend &amp;&amp; npx vitest run &amp;&amp; npx tsc -b</span>
+<span class="c1">Test Files  5 passed (5)</span>
+<span class="c1">     Tests  40 passed (40)</span></pre>
+
+<!-- ========================================================= -->
+<h2 class="secao">6. Documentação e Tratamento de Erros <span class="peso">10%</span></h2>
+
+<h3 class="criterio">Documentação da API com OpenAPI/Swagger</h3>
+<p>Swagger UI nativo do FastAPI em <span class="mono">/docs</span> (spec crua em <span class="mono">/openapi.json</span>), com:</p>
+<ul>
+  <li>Metadata: título, versão (<span class="mono">1.0.0</span>) e descrição da API;</li>
+  <li><b>Tags</b> por recurso (Autenticação, Leads, Tendência, Anomalias, Catálogo, Resumo executivo) — Swagger agrupado por área;</li>
+  <li>Botão <b>"Authorize"</b> funcional (esquema <span class="mono">HTTPBearer</span> registrado automaticamente) — cola o token e testa qualquer endpoint protegido direto pelo navegador.</li>
+</ul>
+
+<h3 class="criterio">Padronização das respostas de erro</h3>
+<p>Handler global (<span class="mono">main.py</span>) intercepta toda <span class="mono">HTTPException</span> e toda exceção não tratada, devolvendo sempre o mesmo formato — sem quebrar o contrato já existente (<span class="mono">detail</span> continua string):</p>
+<pre>{ "detail": "Usuário ou senha inválidos.", "codigo": "NAO_AUTENTICADO" }
+{ "detail": "VIN 'x' não encontrado na lista de leads.", "codigo": "NAO_ENCONTRADO" }
+{ "detail": "Erro interno no servidor.", "codigo": "ERRO_INTERNO" }</pre>
+<p><span class="mono">codigo</span> é estável (<span class="mono">NAO_AUTENTICADO</span>, <span class="mono">PROIBIDO</span>, <span class="mono">NAO_ENCONTRADO</span>, <span class="mono">DADOS_INVALIDOS</span>, <span class="mono">ERRO_INTERNO</span>) — o front-end pode decidir comportamento (ex.: forçar novo login em <span class="mono">NAO_AUTENTICADO</span>) sem parsear a mensagem. Erros 500 nunca vazam stack trace ao cliente (só logados no servidor).</p>
+
+<h3 class="criterio">README com instruções para execução da solução</h3>
+<p><span class="mono">README.md</span> na raiz do repositório cobre: arquitetura (com os diagramas desta seção), como rodar backend (venv, pipeline de dados, subir a API) e frontend (<span class="mono">npm install && npm run dev</span>), seção dedicada de <b>autenticação</b> com as credenciais de demonstração e exemplo de <span class="mono">curl</span>, tabela de endpoints públicos/protegidos, comandos de teste e limitações conhecidas do projeto.</p>
+
+<div class="rodape">VIN Share Intelligence Hub — Desafio Ford × FIAP — Documentação gerada para a Sprint 3</div>
+
+</body>
+</html>
