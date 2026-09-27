@@ -40,12 +40,35 @@
   .capa h2 { font-size: 13pt; font-weight: 500; color: #4a5266; margin: 0 0 30px; }
   .capa .meta { font-size: 10pt; color: #6b7280; }
   .capa .rubrica {
-    margin-top: 40px;
+    margin-top: 24px;
     border-left: 3px solid #00095b;
     padding-left: 14px;
     color: #4a5266;
     font-size: 9.5pt;
   }
+  .capa .info-projeto {
+    display: flex;
+    gap: 28px;
+    margin-top: 34px;
+  }
+  .capa .equipe table {
+    width: auto;
+    margin: 4px 0 0;
+    font-size: 9pt;
+  }
+  .capa .equipe th, .capa .equipe td { padding: 3px 10px 3px 0; border: none; }
+  .capa .equipe th { background: none; color: #6b7280; font-weight: 600; text-transform: uppercase; font-size: 7.8pt; letter-spacing: 0.03em; }
+  .capa .equipe tr:nth-child(even) td { background: none; }
+  .capa .rotulo {
+    font-size: 7.8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6b7280;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .capa .links p { margin: 0 0 7px; font-size: 9.3pt; }
+  .capa .links b { display: block; font-size: 8pt; color: #4a5266; font-weight: 600; }
 
   h2.secao {
     font-size: 14pt;
@@ -171,6 +194,26 @@
   <h1>VIN Share Intelligence Hub</h1>
   <h2>Sprint 3 — Arquitetura Orientada a Serviços e Web Services</h2>
   <p class="meta">Documentação técnica · autenticação, autorização, JWT, maturidade REST,<br>testes automatizados e tratamento de erros</p>
+
+  <div class="info-projeto">
+    <div class="equipe">
+      <p class="rotulo">Integrantes</p>
+      <table>
+        <tr><th>Nome</th><th>RM</th><th>GitHub</th></tr>
+        <tr><td>Albert Katri</td><td>RM556544</td><td class="mono">0ldev</td></tr>
+        <tr><td>Bruno Biletsky</td><td>RM554739</td><td class="mono">Bruno-Biletsky</td></tr>
+        <tr><td>Paulo Akira</td><td>RM556840</td><td class="mono">pauloakira05</td></tr>
+        <tr><td>Guilherme Gomes</td><td>RM554606</td><td class="mono">guig3003</td></tr>
+      </table>
+    </div>
+    <div class="links">
+      <p class="rotulo">Links</p>
+      <p><b>Repositório — branch sprint3</b><span class="mono">github.com/0ldev/ford-next/tree/sprint3</span></p>
+      <p><b>Swagger / OpenAPI</b><span class="mono">http://localhost:8000/docs</span></p>
+      <p><b>Projeto (frontend)</b><span class="mono">http://localhost:5173</span></p>
+    </div>
+  </div>
+
   <div class="rubrica">
     Estrutura deste documento espelha os critérios de avaliação da sprint:<br>
     Arquitetura (20%) · Autenticação e Autorização (20%) · JWT (15%) ·<br>
