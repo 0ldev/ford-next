@@ -10,7 +10,8 @@ Schema de resposta — mesmo contrato de `frontend/src/domain/types.ts::LeadsRes
         "score": 1.0,
         "motivo": "1016 dias sem servico, 306% acima do intervalo esperado do modelo",
         "modelo": "KA",
-        "diasSemServico": 1016.0
+        "diasSemServico": 1016.0,
+        "prioridade": 0.91
       },
       ...
     ]
@@ -23,21 +24,28 @@ Query params:
       continua trazendo os ~97 mil VINs empatados em score == 1.0 no topo — a
       banda "médio" só isola o meio de verdade (30% a 69%) com os dois limites
       juntos; "alto" (>=70%) não precisa de teto, é o topo aberto da distribuição.
+      Filtram por `score` (risco puro), não por `prioridade` — a faixa de risco na
+      tela é sobre o risco em si, não sobre a mistura com valor do cliente.
     - pagina (opcional, padrão 1) / tamanhoPagina (opcional, padrão 50, máx. 500):
       paginação de verdade sobre o recorte filtrado — não um `head()` fixo.
+      `tamanhoPagina` dobra como "capacidade de contato": a página 1 já é, por
+      construção, a lista dos N leads que mais compensa contatar esta semana.
 
 Resposta: `{"leads": [...], "total": N, "pagina": P, "tamanhoPagina": T}`, onde
 `total` é a contagem do recorte inteiro (após concessionaria/scoreMinimo, antes da
 página) — é o que permite a tela mostrar "50 de 3214" e montar os botões de
 anterior/próxima.
 
-Ordenado por `score` desc e, em empate, por `diasSemServico` desc. O score sozinho
-empata MUITO (a heurística de baixo volume é binária — 0.0/1.0 — e o próprio modelo
-de ML satura perto de 0/1 dado o AUC≈1.0 do baseline; ~97 mil dos 175 mil VINs têm
-`score == 1.0` exatamente). Sem um desempate, a primeira página seria uma fatia
-arbitrária de um empate gigante, não uma ordem por urgência real — o desempate por
-dias sem serviço é o que faz o VIN genuinamente mais atrasado aparecer primeiro
-dentro do empate, em vez de depender da ordem de geração do CSV.
+Ordenado por `prioridade` desc e, em empate, por `diasSemServico` desc — não por
+`score` sozinho. `prioridade` (`domain.prioritization.compute_prioridade`) cruza
+risco com valor do cliente (histórico de serviços) porque risco puro empata MUITO
+(a heurística de baixo volume é binária — 0.0/1.0 — e o próprio modelo de ML satura
+perto de 0/1 dado o AUC≈1.0 do baseline; ~97 mil dos 175 mil VINs têm `score == 1.0`
+exatamente): sem um critério que enxergue além do score, a primeira página seria uma
+fatia arbitrária desse empate gigante, e um veículo de risco alto mas sem histórico
+de retorno furaria a fila na frente de um cliente fiel. O desempate por dias sem
+serviço garante que, mesmo dentro de um empate de prioridade, o VIN genuinamente
+mais atrasado apareça primeiro.
 
 ---
 
@@ -100,6 +108,7 @@ class Lead(BaseModel):
     motivo: str
     modelo: str
     diasSemServico: float
+    prioridade: float
 
 
 class LeadsPagina(BaseModel):
@@ -139,7 +148,7 @@ def get_leads(
     if scoreMaximo is not None:
         leads = leads[leads["score"] < scoreMaximo]
 
-    leads = leads.sort_values(["score", "diasSemServico"], ascending=[False, False])
+    leads = leads.sort_values(["prioridade", "diasSemServico"], ascending=[False, False])
     total = len(leads)
 
     inicio = (pagina - 1) * tamanhoPagina

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useAcoesRecomendadas } from "../application/useAcoesRecomendadas";
 import { useLeads } from "../application/useLeads";
 import { encontrarLeadPrioritario } from "../domain/leads";
@@ -18,6 +18,10 @@ export interface LeadsTableProps {
 
 type Ordem = "asc" | "desc";
 type FaixaScore = "medio" | "alto";
+
+/** Padrão do backend (`LIMIT_PADRAO` em routers/leads.py) — mantém as duas pontas iguais. */
+const CAPACIDADE_PADRAO = 50;
+const CAPACIDADE_MAXIMA = 500;
 
 const PISO_FAIXA: Record<FaixaScore, number> = {
   medio: LIMIAR_MEDIO,
@@ -73,9 +77,11 @@ function vinParaLeitura(vin: string): string {
  * só quando a linha é expandida.
  */
 export default function LeadsTable({ concessionaria }: LeadsTableProps) {
+  const idCapacidade = useId();
   const [ordem, setOrdem] = useState<Ordem>("desc");
   const [faixa, setFaixa] = useState<FaixaScore | undefined>(undefined);
   const [pagina, setPagina] = useState(1);
+  const [capacidade, setCapacidade] = useState(CAPACIDADE_PADRAO);
   const [expandidos, setExpandidos] = useState<string[]>([]);
 
   const piso = faixa ? PISO_FAIXA[faixa] : undefined;
@@ -84,29 +90,39 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
     concessionaria,
     scoreMinimo: piso,
     scoreMaximo: teto,
-    pagina
+    pagina,
+    tamanhoPagina: capacidade
   });
   const { acoes, carregar, recarregar: recarregarAcao } = useAcoesRecomendadas();
 
-  // Trocar de concessionária ou de faixa muda o recorte inteiro — a página
-  // antiga pode nem existir mais nele, então volta pro início.
+  // Trocar de concessionária, faixa ou capacidade muda o recorte inteiro — a
+  // página antiga pode nem existir mais nele, então volta pro início.
   useEffect(() => {
     setPagina(1);
-  }, [concessionaria, faixa]);
+  }, [concessionaria, faixa, capacidade]);
 
   const total = data?.total ?? 0;
-  const tamanhoPagina = data?.tamanhoPagina ?? 50;
+  const tamanhoPagina = data?.tamanhoPagina ?? CAPACIDADE_PADRAO;
   const totalPaginas = Math.max(1, Math.ceil(total / tamanhoPagina));
 
   const leads = useMemo(() => {
     const lista = data?.leads ?? [];
-    return [...lista].sort((a, b) => (ordem === "desc" ? b.score - a.score : a.score - b.score));
+    return [...lista].sort((a, b) =>
+      ordem === "desc" ? b.prioridade - a.prioridade : a.prioridade - b.prioridade
+    );
   }, [data, ordem]);
+
+  /** Normaliza o campo de capacidade: só inteiros positivos, até o teto do backend. */
+  const alterarCapacidade = (valor: string) => {
+    const numero = Math.trunc(Number(valor));
+    if (!Number.isFinite(numero) || numero < 1) return;
+    setCapacidade(Math.min(numero, CAPACIDADE_MAXIMA));
+  };
 
   /*
    * O card de destaque mostra sempre o caso mais urgente do recorte, então
-   * olha o maior score e não o primeiro da lista — inverter a ordenação da
-   * tabela não deve trocar qual é a ação prioritária.
+   * olha a maior prioridade e não o primeiro da lista — inverter a ordenação
+   * da tabela não deve trocar qual é a ação prioritária.
    */
   const leadPrioritario = useMemo(() => encontrarLeadPrioritario(leads), [leads]);
 
@@ -154,8 +170,25 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
           onChange={(valor) => setFaixa(valor as FaixaScore | undefined)}
           placeholder="Todos os scores"
         />
+
+        <div className="campo">
+          <label className="campo-label" htmlFor={idCapacidade}>
+            Contatos possíveis esta semana
+          </label>
+          <input
+            id={idCapacidade}
+            className="campo-controle"
+            type="number"
+            min={1}
+            max={CAPACIDADE_MAXIMA}
+            value={capacidade}
+            onChange={(evento) => alterarCapacidade(evento.target.value)}
+          />
+        </div>
+
         <p className="leads-contagem">
           {total} {total === 1 ? "lead" : "leads"}{faixa ? " nesta faixa" : " na fila"}
+          {pagina === 1 ? ` · esta página é a lista de contato da semana, em ordem de prioridade` : ""}
         </p>
       </div>
 
@@ -172,6 +205,9 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
                 <th scope="col">VIN</th>
                 <th scope="col">Concessionária</th>
                 <th scope="col">Modelo</th>
+                <th scope="col" className="coluna-score">
+                  Score
+                </th>
                 <th
                   scope="col"
                   aria-sort={ordem === "desc" ? "descending" : "ascending"}
@@ -182,7 +218,7 @@ export default function LeadsTable({ concessionaria }: LeadsTableProps) {
                     className="cabecalho-ordenavel"
                     onClick={() => setOrdem((atual) => (atual === "desc" ? "asc" : "desc"))}
                   >
-                    Score
+                    Prioridade
                     <span aria-hidden="true" className="seta-ordem">
                       {ordem === "desc" ? "▼" : "▲"}
                     </span>
@@ -272,6 +308,7 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
         <td className="coluna-score">
           <span className={`score score-${nivel}`}>{formatarScore(lead.score)}</span>
         </td>
+        <td className="coluna-score">{formatarScore(lead.prioridade)}</td>
         <td className="celula-motivo">{lead.motivo}</td>
       </tr>
 
@@ -279,7 +316,7 @@ function LinhaLead({ lead, expandido, onAlternar, acao, onTentarNovamente }: Lin
           aria-controls do botão nunca é um id inexistente. O conteúdo, esse
           sim, só é montado quando a linha abre. */}
       <tr className="linha-detalhe" id={idDetalhe} hidden={!expandido}>
-        <td colSpan={6}>
+        <td colSpan={7}>
           {expandido && (
             <div className="detalhe">
               <div className="detalhe-bloco">
