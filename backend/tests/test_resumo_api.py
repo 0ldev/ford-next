@@ -65,6 +65,23 @@ def test_resumo_executivo_modelos_maior_risco_reflete_os_leads(token_gestor: str
     assert corpo["modelosMaiorRisco"][0] == {"modelo": "KA", "percentualAltoRisco": 60.0, "totalVeiculos": 200}
 
 
+def test_resumo_executivo_concessionaria_so_ve_a_propria_concessionaria_em_alerta(
+    monkeypatch: pytest.MonkeyPatch, token_concessionaria: str
+) -> None:
+    anomalias_calculadas = [
+        {"tipo": "queda_dealer", "entidade": "6693", "severidade": 0.4, "descricao": "d1", "resumo": "r1", "valorReferencia": 1.0, "valorAtual": 2.0},
+        {"tipo": "pico_mainsource", "entidade": "9999", "severidade": 0.9, "descricao": "d2", "resumo": "r2", "valorReferencia": 1.0, "valorAtual": 2.0},
+    ]
+    monkeypatch.setattr(resumo_router, "_anomalias_calculadas", lambda: anomalias_calculadas)
+
+    resposta = client.get("/api/resumo-executivo", headers=auth_headers(token_concessionaria))
+    corpo = resposta.json()
+
+    assert [item["dealerCode"] for item in corpo["concessionariasEmAlerta"]] == ["6693"]
+    # agregados de rede continuam completos, sem escopo por dealer
+    assert corpo["modelosMaiorRisco"][0]["modelo"] == "KA"
+
+
 def test_resumo_executivo_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     def _sem_dados() -> pd.DataFrame:
         raise FileNotFoundError("Lista de leads não encontrada.")

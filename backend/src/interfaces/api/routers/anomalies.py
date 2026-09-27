@@ -51,6 +51,10 @@ observável neste dataset).
 O cálculo é custoso (~3-4s sobre o histórico completo) e não depende de nenhum
 parâmetro de request — fica em cache (`lru_cache`) após a primeira chamada, aquecido
 no startup da API (ver `main.py`).
+
+Protegido: exige `Authorization: Bearer <token>`. Perfil `concessionaria` só vê
+`queda_dealer`/`pico_mainsource` do próprio dealer — `gap_modelo` (sem dimensão de
+dealer) continua visível a todos (ver `domain.authorization.filtrar_anomalias_por_perfil`).
 """
 from __future__ import annotations
 
@@ -60,6 +64,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from src.application.anomaly_detection import compute_anomalies
+from src.domain.authorization import filtrar_anomalias_por_perfil
 from src.infrastructure.vin_share_repository import load_vin_share_data
 from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
 
@@ -83,4 +88,5 @@ def _anomalias_calculadas() -> list[dict]:
 
 @router.get("/anomalies", response_model=list[Anomaly])
 def get_anomalies(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> list[Anomaly]:
-    return [Anomaly(**anomalia) for anomalia in _anomalias_calculadas()]
+    anomalias = filtrar_anomalias_por_perfil(usuario.perfil, usuario.dealer_code, _anomalias_calculadas())
+    return [Anomaly(**anomalia) for anomalia in anomalias]

@@ -82,6 +82,40 @@ def test_anomalies_query_param_desconhecido_e_ignorado(monkeypatch: pytest.Monke
     assert resposta.status_code == 200
 
 
+def test_anomalies_concessionaria_so_ve_o_proprio_dealer(
+    monkeypatch: pytest.MonkeyPatch, token_concessionaria: str
+) -> None:
+    # gap_modelo (sem dealer) e' visivel; queda_dealer/pico_mainsource de outros
+    # dealers, nao -- so' o 6693 (dealer do token_concessionaria).
+    anomalias_calculadas = [
+        {"tipo": "queda_dealer", "entidade": "6693", "severidade": 0.4, "descricao": "d1", "resumo": "r1", "valorReferencia": 1.0, "valorAtual": 2.0},
+        {"tipo": "queda_dealer", "entidade": "9999", "severidade": 0.9, "descricao": "d2", "resumo": "r2", "valorReferencia": 1.0, "valorAtual": 2.0},
+        {"tipo": "pico_mainsource", "entidade": "9999", "severidade": 0.5, "descricao": "d3", "resumo": "r3", "valorReferencia": 1.0, "valorAtual": 2.0},
+        {"tipo": "gap_modelo", "entidade": "KA", "severidade": 0.3, "descricao": "d4", "resumo": "r4", "valorReferencia": 1.0, "valorAtual": 2.0},
+    ]
+    monkeypatch.setattr(anomalies_router, "_anomalias_calculadas", lambda: anomalias_calculadas)
+
+    resposta = client.get("/api/anomalies", headers=auth_headers(token_concessionaria))
+    corpo = resposta.json()
+
+    assert resposta.status_code == 200
+    tipos_e_entidades = {(item["tipo"], item["entidade"]) for item in corpo}
+    assert tipos_e_entidades == {("queda_dealer", "6693"), ("gap_modelo", "KA")}
+
+
+def test_anomalies_gestor_ve_anomalias_de_qualquer_dealer(
+    monkeypatch: pytest.MonkeyPatch, token_gestor: str
+) -> None:
+    anomalias_calculadas = [
+        {"tipo": "queda_dealer", "entidade": "6693", "severidade": 0.4, "descricao": "d1", "resumo": "r1", "valorReferencia": 1.0, "valorAtual": 2.0},
+        {"tipo": "queda_dealer", "entidade": "9999", "severidade": 0.9, "descricao": "d2", "resumo": "r2", "valorReferencia": 1.0, "valorAtual": 2.0},
+    ]
+    monkeypatch.setattr(anomalies_router, "_anomalias_calculadas", lambda: anomalias_calculadas)
+
+    resposta = client.get("/api/anomalies", headers=auth_headers(token_gestor))
+    assert len(resposta.json()) == 2
+
+
 def test_anomalies_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     def _sem_dados() -> pd.DataFrame:
         raise FileNotFoundError("Histórico de serviços não encontrado.")

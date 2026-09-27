@@ -102,9 +102,10 @@ GET /api/leads/distribuicao-score — schema de resposta:
       {"faixaInicio": 90.0, "faixaFim": 100.0, "quantidade": 97490}
     ]
 
-Sem query params — sempre a base inteira de `leads.csv` (~175 mil VINs), não o top 50
-de `/leads`. Existe porque o top 50 não mostra a forma real da distribuição do score
-(ver `application.leads_metrics.compute_score_distribution`: ela é fortemente
+Sem query params — para perfil `gestor`, sempre a base inteira de `leads.csv` (~175
+mil VINs), não o top 50 de `/leads`; para perfil `concessionaria`, só a frota do
+próprio dealer. Existe porque o top 50 não mostra a forma real da distribuição do
+score (ver `application.leads_metrics.compute_score_distribution`: ela é fortemente
 bimodal — a maior parte da frota está perto de 0% ou perto de 100%, quase nada no
 meio, consequência direta de como o rótulo/score foi construído).
 """
@@ -211,9 +212,14 @@ def get_leads(
 
 @router.get("/leads/distribuicao-score", response_model=list[FaixaScore])
 def get_distribuicao_score(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> list[FaixaScore]:
-    # Sem escopo por dealer de proposito: e' a forma da distribuicao da rede
-    # inteira, nao ha uma leitura "por concessionaria" que faca sentido aqui.
     leads = load_leads_data()
+
+    # Perfil concessionaria ve a distribuicao so' da propria frota, nao da rede
+    # inteira -- mesma logica de escopo do GET /leads, so' que sem query param
+    # pra pedir (nao ha "outro dealer" pra tentar acessar aqui).
+    if usuario.perfil == "concessionaria":
+        leads = leads[leads["dealerCode"] == usuario.dealer_code]
+
     faixas = compute_score_distribution(leads)
 
     return [FaixaScore(**faixa) for faixa in faixas]

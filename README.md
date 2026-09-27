@@ -151,8 +151,10 @@ Documentação interativa (Swagger UI, com botão "Authorize" para colar o Beare
 | `POST /api/auth/login` | sim | único jeito de obter um token |
 | `GET /api/vin-share` | não | perfil `concessionaria` escopado no próprio dealer |
 | `GET /api/trend`, `GET /api/trend/concessionarias` | não | a segunda é escopada por dealer |
-| `GET /api/anomalies`, `GET /api/catalogo`, `GET /api/resumo-executivo`, `GET /api/leads/distribuicao-score` | não | agregados de rede, sem escopo por dealer |
-| `GET /api/leads`, `GET /api/leads/{vin}/acao` | não | escopados por dealer |
+| `GET /api/anomalies` | não | `concessionaria` só vê `queda_dealer`/`pico_mainsource` do próprio dealer; `gap_modelo` (sem essa dimensão) continua completo |
+| `GET /api/catalogo` | não | `concessionaria` só vê o próprio código em `concessionarias`; `modelos`/`tiposServico`/`periodoDisponivel` continuam completos |
+| `GET /api/resumo-executivo` | não | `concessionariasEmAlerta` escopado por dealer; `modelosMaiorRisco`/`mesesMaiorChurn` são agregados de rede, sem essa dimensão |
+| `GET /api/leads`, `GET /api/leads/{vin}/acao`, `GET /api/leads/distribuicao-score` | não | escopados por dealer |
 | `POST`/`GET /api/leads/{vin}/contatos` | não | registra/lista contato feito com o VIN; escopado por dealer |
 
 ### 4. Frontend
@@ -189,7 +191,7 @@ Token JWT (HS256), expira em 60 minutos (`backend/src/domain/security.py`). Segr
 ## Testes
 
 ```bash
-# Backend (357+ testes, incluindo autenticação/autorização/JWT)
+# Backend (369+ testes, incluindo autenticação/autorização/JWT)
 cd backend && .venv/bin/python -m pytest tests/ -q
 
 # Frontend

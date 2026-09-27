@@ -242,6 +242,25 @@ def test_distribuicao_score_retorna_todas_as_faixas_somando_o_total(token_gestor
     assert all(set(f.keys()) == {"faixaInicio", "faixaFim", "quantidade"} for f in corpo)
 
 
+def test_distribuicao_score_concessionaria_ve_so_a_propria_frota(
+    monkeypatch: pytest.MonkeyPatch, token_concessionaria: str
+) -> None:
+    # 2 leads do dealer 6693 (token_concessionaria), 3 de outros dealers -- a
+    # distribuicao da concessionaria deve somar 2, nao os 5 da rede toda.
+    leads_com_6693 = pd.DataFrame([
+        {"vin": "v1", "dealerCode": "6693", "score": 0.9, "motivo": "m", "modelo": "RANGER", "diasSemServico": 400.0, "prioridade": 0.9},
+        {"vin": "v2", "dealerCode": "6693", "score": 0.1, "motivo": "m", "modelo": "KA", "diasSemServico": 10.0, "prioridade": 0.1},
+        {"vin": "v3", "dealerCode": "9999", "score": 0.5, "motivo": "m", "modelo": "KA", "diasSemServico": 100.0, "prioridade": 0.5},
+    ])
+    monkeypatch.setattr(leads_router, "load_leads_data", lambda: leads_com_6693)
+
+    resposta = client.get("/api/leads/distribuicao-score", headers=auth_headers(token_concessionaria))
+    corpo = resposta.json()
+
+    assert resposta.status_code == 200
+    assert sum(f["quantidade"] for f in corpo) == 2
+
+
 def test_distribuicao_score_arquivo_de_dados_ausente_nao_derruba_o_processo(token_gestor: str) -> None:
     def _sem_dados() -> pd.DataFrame:
         raise FileNotFoundError("Lista de leads não encontrada.")

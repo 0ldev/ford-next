@@ -22,6 +22,12 @@ Sem query params: é sempre o recorte de rede inteira, top 3 por lista — a ver
 "bateu o olho" do dashboard, não mais um filtro. Ver `application.resumo_executivo`
 para a lógica de cada lista; reaproveita `_anomalias_calculadas` (já em cache) para
 as concessionárias em alerta, então não recalcula anomalias aqui.
+
+Protegido: exige `Authorization: Bearer <token>`. Perfil `concessionaria` só vê a
+própria concessionária em `concessionariasEmAlerta` (mesma regra de `GET
+/api/anomalies` — ver `domain.authorization.filtrar_anomalias_por_perfil`);
+`modelosMaiorRisco`/`mesesMaiorChurn` são agregados de rede sem dimensão de
+dealer e continuam completos pros dois perfis.
 """
 from __future__ import annotations
 
@@ -33,6 +39,7 @@ from src.application.resumo_executivo import (
     meses_maior_churn,
     modelos_maior_risco,
 )
+from src.domain.authorization import filtrar_anomalias_por_perfil
 from src.infrastructure.leads_repository import load_leads_data
 from src.infrastructure.vin_share_repository import load_vin_share_data
 from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
@@ -67,9 +74,11 @@ class ResumoExecutivo(BaseModel):
 
 @router.get("/resumo-executivo", response_model=ResumoExecutivo)
 def get_resumo_executivo(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> ResumoExecutivo:
+    anomalias = filtrar_anomalias_por_perfil(usuario.perfil, usuario.dealer_code, _anomalias_calculadas())
+
     return ResumoExecutivo(
         concessionariasEmAlerta=[
-            ConcessionariaEmAlerta(**item) for item in concessionarias_em_alerta(_anomalias_calculadas())
+            ConcessionariaEmAlerta(**item) for item in concessionarias_em_alerta(anomalias)
         ],
         modelosMaiorRisco=[ModeloMaiorRisco(**item) for item in modelos_maior_risco(load_leads_data())],
         mesesMaiorChurn=[MesMaiorChurn(**item) for item in meses_maior_churn(load_vin_share_data())],

@@ -2,6 +2,8 @@ import pytest
 
 from src.domain.authorization import (
     AcessoNegadoError,
+    filtrar_anomalias_por_perfil,
+    filtrar_concessionarias_visiveis,
     resolver_escopo_concessionaria,
     resolver_escopo_concessionarias,
     verificar_acesso_ao_dealer,
@@ -76,3 +78,57 @@ def test_concessionaria_acessa_recurso_do_proprio_dealer() -> None:
 def test_concessionaria_nao_acessa_recurso_de_outro_dealer() -> None:
     with pytest.raises(AcessoNegadoError):
         verificar_acesso_ao_dealer("concessionaria", "6693", "9999")
+
+
+# --------------------------------------------------------------------------- #
+# filtrar_concessionarias_visiveis (GET /catalogo)                             #
+# --------------------------------------------------------------------------- #
+
+def test_gestor_ve_todas_as_concessionarias_do_catalogo() -> None:
+    todas = ["100", "200", "6693"]
+    assert filtrar_concessionarias_visiveis("gestor", None, todas) == todas
+
+
+def test_concessionaria_so_ve_o_proprio_codigo_no_catalogo() -> None:
+    todas = ["100", "200", "6693"]
+    assert filtrar_concessionarias_visiveis("concessionaria", "6693", todas) == ["6693"]
+
+
+def test_concessionaria_nao_aparece_lista_vazia_se_o_proprio_dealer_nao_estiver_no_catalogo() -> None:
+    # Nao deveria acontecer na pratica (o proprio login so' existe pra dealers
+    # reais), mas a funcao nao pode quebrar nem inventar uma entrada.
+    assert filtrar_concessionarias_visiveis("concessionaria", "6693", ["100", "200"]) == []
+
+
+# --------------------------------------------------------------------------- #
+# filtrar_anomalias_por_perfil (GET /anomalies, GET /resumo-executivo)         #
+# --------------------------------------------------------------------------- #
+
+def _anomalia(tipo: str, entidade: str) -> dict:
+    return {"tipo": tipo, "entidade": entidade, "severidade": 0.5, "resumo": "r", "descricao": "d",
+            "valorReferencia": 1.0, "valorAtual": 2.0}
+
+
+def test_gestor_ve_todas_as_anomalias() -> None:
+    anomalias = [_anomalia("queda_dealer", "100"), _anomalia("pico_mainsource", "200"), _anomalia("gap_modelo", "KA")]
+    assert filtrar_anomalias_por_perfil("gestor", None, anomalias) == anomalias
+
+
+def test_concessionaria_so_ve_queda_dealer_e_pico_mainsource_do_proprio_dealer() -> None:
+    anomalias = [
+        _anomalia("queda_dealer", "6693"),
+        _anomalia("queda_dealer", "9999"),
+        _anomalia("pico_mainsource", "6693"),
+        _anomalia("pico_mainsource", "9999"),
+    ]
+    resultado = filtrar_anomalias_por_perfil("concessionaria", "6693", anomalias)
+
+    assert len(resultado) == 2
+    assert all(item["entidade"] == "6693" for item in resultado)
+
+
+def test_concessionaria_ve_gap_modelo_de_qualquer_modelo_mesmo_assim() -> None:
+    # gap_modelo nao tem dimensao de dealer (entidade e' um ModelName) -- e'
+    # sinal de rede, continua visivel independente do dealer do usuario.
+    anomalias = [_anomalia("gap_modelo", "KA"), _anomalia("gap_modelo", "RANGER")]
+    assert filtrar_anomalias_por_perfil("concessionaria", "6693", anomalias) == anomalias

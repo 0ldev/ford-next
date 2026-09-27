@@ -24,12 +24,19 @@ Nota: `tiposServico` tem hoje um único valor real ("Maintenance") — o dataset
 distingue revisão programada de corretiva, garantia, recall etc. como o mock do
 frontend supunha. O filtro de tipo de serviço continua funcional, só pouco
 discriminante com os dados atuais.
+
+Protegido: exige `Authorization: Bearer <token>`. Perfil `concessionaria` só vê o
+próprio código em `concessionarias` — o seletor da tela já vem travado nesse
+dealer, não faz sentido listar os outros 400+ (ver
+`domain.authorization.filtrar_concessionarias_visiveis`); `modelos`/`tiposServico`/
+`periodoDisponivel` continuam completos pros dois perfis.
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from src.domain.authorization import filtrar_concessionarias_visiveis
 from src.infrastructure.vin_share_repository import load_vin_share_data
 from src.interfaces.api.dependencies import UsuarioAutenticado, obter_usuario_atual
 
@@ -60,6 +67,7 @@ def get_catalogo(usuario: UsuarioAutenticado = Depends(obter_usuario_atual)) -> 
         df["DealerCode"].dropna().astype(int).astype(str).unique().tolist(),
         key=lambda codigo: int(codigo) if codigo.isdigit() else codigo,
     )
+    concessionarias = filtrar_concessionarias_visiveis(usuario.perfil, usuario.dealer_code, concessionarias)
     tipos_servico = sorted(df["ServiceType"].dropna().unique().tolist())
 
     datas_validas = df["ServiceDate"].dropna()

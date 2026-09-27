@@ -67,6 +67,28 @@ def test_catalogo_periodo_disponivel_e_o_intervalo_real_de_service_date(token_ge
     assert corpo["periodoDisponivel"] == {"inicio": "2021-03-10", "fim": "2024-11-20"}
 
 
+def test_catalogo_concessionaria_so_ve_o_proprio_dealer(token_concessionaria: str) -> None:
+    # _historico_pequeno() tem os dealers 100/200/1009; token_concessionaria e' do 6693
+    # (fora da lista) -- devolve vazio, nao inventa nem devolve os outros.
+    corpo = client.get("/api/catalogo", headers=auth_headers(token_concessionaria)).json()
+    assert corpo["concessionarias"] == []
+    # modelos/tiposServico continuam completos, sem escopo por dealer
+    assert corpo["modelos"] == ["ECOSPORT", "KA", "RANGER"]
+
+
+def test_catalogo_concessionaria_ve_o_proprio_dealer_quando_presente(
+    monkeypatch: pytest.MonkeyPatch, token_concessionaria: str
+) -> None:
+    historico_com_6693 = pd.DataFrame([
+        {"VIN_Hash": "v1", "ModelName": "RANGER", "DealerCode": 100, "ServiceType": "Maintenance", "ServiceDate": pd.Timestamp("2021-01-01")},
+        {"VIN_Hash": "v2", "ModelName": "KA", "DealerCode": 6693, "ServiceType": "Maintenance", "ServiceDate": pd.Timestamp("2021-01-02")},
+    ])
+    monkeypatch.setattr(catalogo_router, "load_vin_share_data", lambda: historico_com_6693)
+
+    corpo = client.get("/api/catalogo", headers=auth_headers(token_concessionaria)).json()
+    assert corpo["concessionarias"] == ["6693"]
+
+
 def test_catalogo_periodo_disponivel_e_null_sem_nenhuma_data_valida(
     monkeypatch: pytest.MonkeyPatch, token_gestor: str) -> None:
     sem_datas = pd.DataFrame([
