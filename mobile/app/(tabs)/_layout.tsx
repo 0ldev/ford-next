@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { cores } from "../../src/presentation/theme";
 
-const ALTURA_BARRA = 56;
+const ALTURA_BARRA = 64;
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -14,12 +14,13 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: cores.marca,
         tabBarInactiveTintColor: cores.neutro400,
+        tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
+        tabBarItemStyle: { paddingVertical: 4 },
         tabBarStyle: {
           backgroundColor: cores.superficie,
           borderTopColor: cores.borda,
           height: ALTURA_BARRA + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom + 6
+          paddingBottom: insets.bottom
         }
       }}
     >
