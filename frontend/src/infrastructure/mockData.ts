@@ -20,6 +20,7 @@ import type {
   Lead,
   LeadsFiltros,
   LeadsResponse,
+  ResumoExecutivo,
   ScoreDistributionResponse,
   TrendConcessionariaFiltros,
   TrendConcessionariaResponse,
@@ -560,5 +561,41 @@ export function mockCatalogo(): Catalogo {
     concessionarias: CONCESSIONARIAS.map((item) => item.dealerCode),
     tiposServico: [...TIPOS_SERVICO],
     periodoDisponivel: { inicio: `${PERIODO_PADRAO_INICIO}-01`, fim: `${PERIODO_PADRAO_FIM}-30` }
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* GET /api/resumo-executivo                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Reaproveita `mockAnomalies()` para as concessionárias em alerta (mesmos dados,
+ * só o recorte de dealer já ordenado por severidade) — números de modelo/mês
+ * calibrados pra lembrar a saída real do endpoint (ver `resumo_executivo.py`).
+ */
+export function mockResumoExecutivo(): ResumoExecutivo {
+  const concessionariasEmAlerta = mockAnomalies()
+    .filter((anomalia) => anomalia.tipo === "queda_dealer" || anomalia.tipo === "pico_mainsource")
+    .sort((a, b) => b.severidade - a.severidade)
+    .slice(0, 3)
+    .map((anomalia) => ({
+      dealerCode: anomalia.entidade,
+      tipo: anomalia.tipo,
+      severidade: anomalia.severidade,
+      resumo: anomalia.resumo
+    }));
+
+  return {
+    concessionariasEmAlerta,
+    modelosMaiorRisco: [
+      { modelo: "KA", percentualAltoRisco: 94.6, totalVeiculos: 50373 },
+      { modelo: "ECOSPORT", percentualAltoRisco: 89.7, totalVeiculos: 16010 },
+      { modelo: "TRANSIT", percentualAltoRisco: 81.6, totalVeiculos: 4120 }
+    ],
+    mesesMaiorChurn: [
+      { competencia: "2024-06", vinShareRede: 3.9 },
+      { competencia: "2024-05", vinShareRede: 4.0 },
+      { competencia: "2024-09", vinShareRede: 4.2 }
+    ]
   };
 }

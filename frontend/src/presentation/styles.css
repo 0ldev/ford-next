@@ -107,6 +107,13 @@ body {
   color: var(--cor-texto-suave);
 }
 
+/* Linha curta sob `.secao-titulo`, quando a seção precisa de 1 frase de contexto. */
+.secao-subtitulo {
+  margin: calc(var(--espaco-4) * -1) 0 var(--espaco-4);
+  font-size: var(--texto-sm);
+  color: var(--cor-texto-suave);
+}
+
 /* Mensagens compartilhadas ---------------------------------------- */
 
 /* Bloco de erro único do dashboard (componente EstadoErro). */
@@ -1146,4 +1153,105 @@ body {
 .botao-copiar[data-estado="falhou"] {
   border-color: var(--risco-medio);
   color: var(--risco-medio);
+}
+
+/* Resumo executivo -------------------------------------------------- */
+
+.resumo-grade {
+  display: grid;
+  /* Mesma lógica de `.anomalias`: 260px mantém os três cartões lado a lado já
+     em telas médias, sem cartão órfão numa linha sozinha. */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--espaco-5);
+  align-items: start;
+}
+
+.resumo-card {
+  padding: var(--espaco-5);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-sm);
+  background: var(--cor-superficie);
+}
+
+.resumo-card-titulo {
+  margin: 0 0 var(--espaco-4);
+  font-size: var(--texto-lg);
+  font-weight: var(--peso-medio);
+  color: var(--azul-900);
+}
+
+.resumo-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-4);
+}
+
+.resumo-linha {
+  display: flex;
+  align-items: center;
+  gap: var(--espaco-3);
+}
+
+/* Número de posição, não contador — por isso não reaproveita `.anomalias-grupo-contagem`. */
+.resumo-rank {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tamanho-contador);
+  height: var(--tamanho-contador);
+  border-radius: 50%;
+  background: var(--azul-100);
+  font-size: var(--texto-2xs);
+  font-weight: var(--peso-forte);
+  color: var(--cor-marca);
+}
+
+.resumo-linha-corpo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--espaco-1);
+}
+
+.resumo-linha-titulo {
+  font-weight: var(--peso-forte);
+  color: var(--cor-texto);
+}
+
+/* Uma linha só, de propósito: o resumo executivo é pra ler em segundos, não
+   pra repetir o parágrafo inteiro que já está no painel de anomalias. */
+.resumo-linha-legenda {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--texto-sm);
+  color: var(--cor-texto-suave);
+}
+
+.resumo-linha-valor {
+  flex: none;
+  font-size: var(--texto-xl);
+  font-weight: var(--peso-forte);
+  font-variant-numeric: tabular-nums;
+  color: var(--azul-800);
+}
+
+.resumo-linha-valor.score-alto {
+  background: none;
+  color: var(--risco-alto);
+}
+
+.resumo-linha-valor.score-medio {
+  background: none;
+  color: var(--risco-medio);
+}
+
+.resumo-linha-valor.score-baixo {
+  background: none;
+  color: var(--risco-baixo);
 }

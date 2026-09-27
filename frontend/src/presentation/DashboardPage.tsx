@@ -8,6 +8,7 @@ import AnomaliasPanel from "./AnomaliasPanel";
 import FiltrosBar from "./FiltrosBar";
 import KpiCard, { formatarInteiro, type ComparacaoKpi } from "./KpiCard";
 import LeadsTable from "./LeadsTable";
+import ResumoExecutivoSection from "./ResumoExecutivoSection";
 import ResumoFiltros from "./ResumoFiltros";
 import ScoreDistributionChart from "./ScoreDistributionChart";
 import TrendChart from "./TrendChart";
@@ -236,6 +237,14 @@ export default function DashboardPage() {
             Leads priorizados
           </h2>
           <LeadsTable concessionaria={filtros.concessionaria} />
+        </section>
+
+        <section className="secao" aria-labelledby="secao-resumo-executivo">
+          <h2 className="secao-titulo" id="secao-resumo-executivo">
+            Resumo executivo
+          </h2>
+          <p className="secao-subtitulo">Onde agir primeiro, em um único olhar.</p>
+          <ResumoExecutivoSection />
         </section>
       </main>
     </div>

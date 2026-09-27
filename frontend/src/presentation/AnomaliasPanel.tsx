@@ -1,4 +1,5 @@
 import { useAnomaliesData } from "../application/useAnomaliesData";
+import { rotularEntidadeDaAnomalia } from "../domain/anomalias";
 import type { Anomaly, AnomalyTipo, VinShareFiltros } from "../domain/types";
 import AnomaliaItem, { atalhoDaAnomalia } from "./AnomaliaItem";
 import EstadoErro from "./EstadoErro";
@@ -73,7 +74,9 @@ export default function AnomaliasPanel({ onFiltrar }: AnomaliasPanelProps) {
           <span className="destaque-anomalia-rotulo">
             Maior alerta · {Math.round(maisSevera.severidade * 100)}% de severidade
           </span>
-          <strong className="destaque-anomalia-entidade">{maisSevera.entidade}</strong>
+          <strong className="destaque-anomalia-entidade">
+            {rotularEntidadeDaAnomalia(maisSevera.tipo, maisSevera.entidade)}
+          </strong>
           <span className="destaque-anomalia-descricao">{maisSevera.descricao}</span>
           {atalhoDoDestaque && (
             <button

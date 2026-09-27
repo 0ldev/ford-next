@@ -13,6 +13,7 @@ import type {
   Catalogo,
   LeadsFiltros,
   LeadsResponse,
+  ResumoExecutivo,
   ScoreDistributionResponse,
   TrendConcessionariaFiltros,
   TrendConcessionariaResponse,
@@ -28,6 +29,7 @@ import {
   mockAnomalies,
   mockCatalogo,
   mockLeads,
+  mockResumoExecutivo,
   mockScoreDistribution,
   mockTrend,
   mockTrendConcessionarias,
@@ -81,4 +83,9 @@ export function buscarTrendConcessionarias(
 export function buscarDistribuicaoScore(): Promise<ScoreDistributionResponse> {
   if (USE_MOCK) return comLatencia(mockScoreDistribution());
   return apiGet<ScoreDistributionResponse>("/leads/distribuicao-score");
+}
+
+export function buscarResumoExecutivo(): Promise<ResumoExecutivo> {
+  if (USE_MOCK) return comLatencia(mockResumoExecutivo());
+  return apiGet<ResumoExecutivo>("/resumo-executivo");
 }

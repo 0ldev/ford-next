@@ -124,6 +124,42 @@ export interface AcaoRecomendada {
 }
 
 /* ------------------------------------------------------------------ */
+/* GET /api/resumo-executivo                                           */
+/* ------------------------------------------------------------------ */
+
+export interface ConcessionariaEmAlerta {
+  dealerCode: string;
+  tipo: AnomalyTipo;
+  /** 0 a 1 — mesma escala de `Anomaly.severidade`. */
+  severidade: number;
+  resumo: string;
+}
+
+export interface ModeloMaiorRisco {
+  modelo: string;
+  /** % da frota do modelo com score de risco alto (>= 70%). */
+  percentualAltoRisco: number;
+  totalVeiculos: number;
+}
+
+export interface MesMaiorChurn {
+  /** Competência no formato "YYYY-MM". */
+  competencia: string;
+  /** VIN Share da rede inteira naquele mês (%). */
+  vinShareRede: number;
+}
+
+/**
+ * As três listas do "bateu o olho": onde agir primeiro, sem precisar navegar o
+ * resto do dashboard. Cada lista já vem em ordem de prioridade (pior primeiro).
+ */
+export interface ResumoExecutivo {
+  concessionariasEmAlerta: ConcessionariaEmAlerta[];
+  modelosMaiorRisco: ModeloMaiorRisco[];
+  mesesMaiorChurn: MesMaiorChurn[];
+}
+
+/* ------------------------------------------------------------------ */
 /* GET /api/catalogo                                                   */
 /* ------------------------------------------------------------------ */
 

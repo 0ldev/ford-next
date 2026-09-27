@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from src.infrastructure.leads_repository import load_leads_data
 from src.infrastructure.vin_share_repository import load_vin_share_data
-from src.interfaces.api.routers import anomalies, catalogo, leads, trend, vin_share
+from src.interfaces.api.routers import anomalies, catalogo, leads, resumo, trend, vin_share
 from src.interfaces.api.routers.anomalies import _anomalias_calculadas
 
 
@@ -36,6 +36,7 @@ app.include_router(leads.router, prefix="/api")
 app.include_router(trend.router, prefix="/api")
 app.include_router(anomalies.router, prefix="/api")
 app.include_router(catalogo.router, prefix="/api")
+app.include_router(resumo.router, prefix="/api")
 
 
 @app.get("/health")

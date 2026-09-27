@@ -1,3 +1,4 @@
+import { rotularEntidadeDaAnomalia } from "../domain/anomalias";
 import { nivelDeRisco, type NivelRisco } from "../domain/severidade";
 import type { Anomaly, VinShareFiltros } from "../domain/types";
 import { CONCESSIONARIAS, MODELOS } from "../infrastructure/mockData";
@@ -77,7 +78,9 @@ export default function AnomaliaItem({ anomalia, onFiltrar }: AnomaliaItemProps)
   return (
     <li className={`anomalia anomalia-${nivel}`}>
       <div className="anomalia-cabecalho">
-        <span className="anomalia-entidade">{anomalia.entidade}</span>
+        <span className="anomalia-entidade">
+          {rotularEntidadeDaAnomalia(anomalia.tipo, anomalia.entidade)}
+        </span>
         <span className={`anomalia-selo anomalia-selo-${nivel}`}>
           {ROTULO_NIVEL[nivel]} · {percentual}%
         </span>
